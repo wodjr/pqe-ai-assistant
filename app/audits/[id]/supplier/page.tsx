@@ -30,20 +30,26 @@ import EvidenceUpload from "@/components/EvidenceUpload";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Link from "next/link";
 
-const RESPONSE_STATUSES: { value: ResponseStatus; label: string }[] = [
-  { value: "NOT_ASSESSED", label: "Not Assessed" },
-  { value: "CONFORMING",   label: "Conforming" },
-  { value: "MINOR_NC",     label: "Minor Non-Conformance" },
-  { value: "MAJOR_NC",     label: "Major Non-Conformance" },
-  { value: "NOT_APPLICABLE", label: "Not Applicable" },
-];
-
 interface ResponseDraft {
   status: ResponseStatus;
   response: string;
   comments: string;
   score: string;
 }
+
+// Minimal translations for multilingual supplier form
+const TRANSLATIONS: Record<string, {
+  conforming: string; notAssessed: string; minorNC: string; majorNC: string; notApplicable: string;
+  response: string; comments: string; score: string; saveResponse: string; evidence: string;
+}> = {
+  en: { conforming: "Conforming", notAssessed: "Not Assessed", minorNC: "Minor Non-Conformance", majorNC: "Major Non-Conformance", notApplicable: "Not Applicable", response: "Supplier Response", comments: "Comments / Supporting Information", score: "Self-Assessment Score", saveResponse: "Save Response", evidence: "Upload Evidence" },
+  es: { conforming: "Conforme", notAssessed: "No Evaluado", minorNC: "No Conformidad Menor", majorNC: "No Conformidad Mayor", notApplicable: "No Aplicable", response: "Respuesta del Proveedor", comments: "Comentarios / Información de Soporte", score: "Puntuación de Autoevaluación", saveResponse: "Guardar Respuesta", evidence: "Subir Evidencia" },
+  de: { conforming: "Konform", notAssessed: "Nicht Bewertet", minorNC: "Geringfügige NC", majorNC: "Wesentliche NC", notApplicable: "Nicht Anwendbar", response: "Lieferantenantwort", comments: "Kommentare / Nachweise", score: "Selbstbewertungspunktzahl", saveResponse: "Antwort Speichern", evidence: "Nachweise Hochladen" },
+  fr: { conforming: "Conforme", notAssessed: "Non Évalué", minorNC: "Non-Conformité Mineure", majorNC: "Non-Conformité Majeure", notApplicable: "Non Applicable", response: "Réponse Fournisseur", comments: "Commentaires / Informations de Soutien", score: "Score d'Auto-Évaluation", saveResponse: "Enregistrer la Réponse", evidence: "Téléverser les Preuves" },
+  zh: { conforming: "符合", notAssessed: "未评估", minorNC: "轻微不符合", majorNC: "严重不符合", notApplicable: "不适用", response: "供应商回复", comments: "意见/支持信息", score: "自我评估分数", saveResponse: "保存回复", evidence: "上传证据" },
+};
+
+const LANG_LABELS: Record<string, string> = { en: "English", es: "Español", de: "Deutsch", fr: "Français", zh: "中文" };
 
 export default function SupplierAssessmentPage() {
   const { id: auditId } = useParams<{ id: string }>();
@@ -55,6 +61,7 @@ export default function SupplierAssessmentPage() {
   const [expandedQ, setExpandedQ] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null); // questionId being saved
   const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState<keyof typeof TRANSLATIONS>("en");
 
   useEffect(() => {
     async function load() {
@@ -135,6 +142,7 @@ export default function SupplierAssessmentPage() {
 
   const totalQ = checklist.sections.reduce((n, s) => n + s.questions.length, 0);
   const answeredQ = saved.size;
+  const t = TRANSLATIONS[lang] ?? TRANSLATIONS.en;
 
   return (
     <div className="space-y-6">
@@ -148,6 +156,23 @@ export default function SupplierAssessmentPage() {
           { label: "Supplier Assessment" },
         ]}
       />
+
+      {/* Language selector */}
+      <Card>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs font-medium text-slate-600">Form Language:</span>
+          {Object.entries(LANG_LABELS).map(([code, label]) => (
+            <button
+              key={code}
+              type="button"
+              onClick={() => setLang(code as keyof typeof TRANSLATIONS)}
+              className={`text-xs px-3 py-1 rounded border font-medium transition-colors ${lang === code ? "bg-blue-600 text-white border-blue-600" : "border-slate-300 text-slate-600 hover:bg-slate-50"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </Card>
 
       {/* Progress */}
       <Card>
@@ -215,7 +240,13 @@ export default function SupplierAssessmentPage() {
                       <div>
                         <label className="block text-xs font-medium text-slate-600 mb-1">Conformance Status</label>
                         <div className="flex flex-wrap gap-2">
-                          {RESPONSE_STATUSES.map((s) => (
+                          {([
+                            { value: "NOT_ASSESSED",  label: t.notAssessed },
+                            { value: "CONFORMING",    label: t.conforming },
+                            { value: "MINOR_NC",      label: t.minorNC },
+                            { value: "MAJOR_NC",      label: t.majorNC },
+                            { value: "NOT_APPLICABLE",label: t.notApplicable },
+                          ] as { value: ResponseStatus; label: string }[]).map((s) => (
                             <label key={s.value} className="flex items-center gap-1.5 cursor-pointer">
                               <input
                                 type="radio"
@@ -235,7 +266,7 @@ export default function SupplierAssessmentPage() {
                       {q.maxScore !== null && (
                         <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1">
-                            Score {q.scoringBasis && <span className="text-slate-400">({q.scoringBasis})</span>}
+                            {t.score} {q.scoringBasis && <span className="text-slate-400">({q.scoringBasis})</span>}
                           </label>
                           <input
                             type="number"
@@ -251,7 +282,7 @@ export default function SupplierAssessmentPage() {
 
                       {/* Response text */}
                       <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Response</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">{t.response}</label>
                         <textarea
                           rows={3}
                           value={draft.response}
@@ -263,7 +294,7 @@ export default function SupplierAssessmentPage() {
 
                       {/* Comments */}
                       <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Additional Comments</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">{t.comments}</label>
                         <textarea
                           rows={2}
                           value={draft.comments}
@@ -276,7 +307,7 @@ export default function SupplierAssessmentPage() {
                       {/* Evidence */}
                       <div>
                         <label className="block text-xs font-medium text-slate-600 mb-1">
-                          Supporting Evidence
+                          {t.evidence}
                         </label>
                         <EvidenceUpload
                           auditId={auditId}
@@ -294,7 +325,7 @@ export default function SupplierAssessmentPage() {
                           onClick={() => saveResponse(q)}
                           className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1.5 rounded disabled:opacity-50 transition-colors"
                         >
-                          {saving === q.id ? "Saving…" : "Save Response"}
+                          {saving === q.id ? "Saving…" : t.saveResponse}
                         </button>
                         {isSaved && (
                           <span className="text-xs text-green-600">✓ Saved</span>

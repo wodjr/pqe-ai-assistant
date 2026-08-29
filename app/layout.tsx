@@ -29,8 +29,14 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="text-center text-xs text-slate-400 py-4 border-t border-slate-200">
-          PQE AI Assistant — Prototype v0.1.0 — Browser storage only — Not a production quality record
+          PQE AI Assistant — Prototype v0.2.0 — Browser storage only — Not a production quality record
         </footer>
+        {/* Service Worker registration — enables offline app shell caching */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }`,
+          }}
+        />
       </body>
     </html>
   );

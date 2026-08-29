@@ -18,12 +18,14 @@ import {
 import { setCurrentAuditId } from "@/lib/storage/localStorage";
 import { exportAuditToJson } from "@/lib/exportBackup";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
+import { getAuditPrepSuggestion, getDailySummarySuggestion, isAIError } from "@/lib/aiSuggest";
 import type { Audit, ChecklistTemplate } from "@/types/project";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import Card from "@/components/Card";
 import StatusBadge from "@/components/StatusBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import AISuggestionBox from "@/components/AISuggestionBox";
 
 export default function AuditDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +35,15 @@ export default function AuditDetailPage() {
   const [stats, setStats] = useState({ responses: 0, verified: 0, findings: 0, cars: 0 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // AI Audit Prep
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  // AI Daily Summary
+  const [dailySuggestion, setDailySuggestion] = useState<string | null>(null);
+  const [dailyLoading, setDailyLoading] = useState(false);
+  const [dailyError, setDailyError] = useState<string | null>(null);
+  const [auditDay, setAuditDay] = useState(1);
 
   useEffect(() => {
     async function load() {
@@ -77,6 +88,28 @@ export default function AuditDetailPage() {
     }
   }
 
+  async function handleAuditPrep() {
+    if (!audit || !checklist) return;
+    setAiLoading(true);
+    setAiError(null);
+    const result = await getAuditPrepSuggestion({
+      supplierName: audit.supplierName,
+      supplierSite: audit.supplierSite,
+      auditType: audit.auditType.replace(/_/g, " "),
+      scope: audit.scope,
+      sections: checklist.sections.map((s) => ({
+        title: s.title,
+        questionCount: s.questions.length,
+      })),
+    });
+    if (isAIError(result)) {
+      setAiError(result.error);
+    } else {
+      setAiSuggestion(result.suggestion);
+    }
+    setAiLoading(false);
+  }
+
   if (loading) return <LoadingSpinner />;
   if (!audit)
     return (
@@ -86,12 +119,44 @@ export default function AuditDetailPage() {
       </div>
     );
 
+  async function handleDailySummary() {
+    if (!audit || !checklist) return;
+    setDailyLoading(true);
+    setDailyError(null);
+    const totalQ = checklist.sections.reduce((n, s) => n + s.questions.length, 0);
+    const result = await getDailySummarySuggestion({
+      supplierName: audit.supplierName,
+      auditType: audit.auditType.replace(/_/g, " "),
+      day: auditDay,
+      totalDays: audit.auditDates.length || 1,
+      verifiedCount: stats.verified,
+      totalQuestions: totalQ,
+      majorFindings: 0, // summary context — auditor knows the actual numbers
+      minorFindings: 0,
+      observations: 0,
+      openCARs: stats.cars,
+      keyNotesSnippets: [],
+    });
+    if (isAIError(result)) {
+      setDailyError(result.error);
+    } else {
+      setDailySuggestion(result.suggestion);
+    }
+    setDailyLoading(false);
+  }
+
   const workflowSteps = [
     { label: "Supplier Self-Assessment", href: `/audits/${id}/supplier`, description: `${stats.responses} responses recorded`, icon: "📝" },
     { label: "Auditor Verification", href: `/audits/${id}/verify`, description: `${stats.verified} items verified`, icon: "✅" },
     { label: "Findings", href: `/findings?auditId=${id}`, description: `${stats.findings} findings`, icon: "🔍" },
     { label: "CARs", href: `/cars?auditId=${id}`, description: `${stats.cars} corrective actions`, icon: "📋" },
     { label: "Generate Report", href: `/audits/${id}/report`, description: "Print-ready HTML report", icon: "📄" },
+  ];
+
+  const auditTools = [
+    { label: "Voice Recording", href: `/audits/${id}/voice`, description: "Record and transcribe conversations", icon: "🎙" },
+    { label: "Document OCR", href: `/audits/${id}/ocr`, description: "Photograph and analyse documents", icon: "🔬" },
+    { label: "Drawing Analysis", href: `/audits/${id}/drawing`, description: "Identify CTF characteristics", icon: "📐" },
   ];
 
   return (
@@ -169,6 +234,66 @@ export default function AuditDetailPage() {
           <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans">{audit.agenda}</pre>
         </Card>
       )}
+
+      {/* AI tools */}
+      <div>
+        <h2 className="text-sm font-semibold text-slate-600 mb-3">Onsite AI Tools</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {auditTools.map((t) => (
+            <Link
+              key={t.href}
+              href={t.href}
+              className="block bg-white border border-amber-200 rounded-lg p-4 hover:shadow-md hover:border-amber-400 transition-all"
+            >
+              <div className="text-xl mb-1">{t.icon}</div>
+              <div className="font-semibold text-slate-700 text-sm">{t.label}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{t.description}</div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* AI Audit Preparation */}
+      <Card title="✦ AI Audit Preparation">
+        <p className="text-xs text-slate-500 mb-3">
+          Generate a risk-based preparation plan for this audit — key focus areas, documents to request, and suggested opening questions.
+          AI suggestions are advisory only and require auditor review before use.
+        </p>
+        <AISuggestionBox
+          suggestion={aiSuggestion}
+          loading={aiLoading}
+          error={aiError}
+          onRequest={handleAuditPrep}
+          buttonLabel="Generate Audit Prep Plan"
+        />
+      </Card>
+
+      {/* AI Daily Summary */}
+      <Card title="✦ AI End-of-Day Summary">
+        <p className="text-xs text-slate-500 mb-3">
+          Generate a professional end-of-day summary based on current audit progress.
+          AI suggestions are advisory only — review before sharing.
+        </p>
+        <div className="flex items-center gap-3 mb-3">
+          <label className="text-xs font-medium text-slate-600">Audit Day:</label>
+          <input
+            type="number"
+            min={1}
+            max={audit.auditDates.length || 10}
+            value={auditDay}
+            onChange={(e) => setAuditDay(Math.max(1, Number(e.target.value)))}
+            className="w-16 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="text-xs text-slate-400">of {audit.auditDates.length || 1}</span>
+        </div>
+        <AISuggestionBox
+          suggestion={dailySuggestion}
+          loading={dailyLoading}
+          error={dailyError}
+          onRequest={handleDailySummary}
+          buttonLabel="Generate Daily Summary"
+        />
+      </Card>
     </div>
   );
 }
