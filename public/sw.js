@@ -15,6 +15,7 @@ const APP_SHELL = [
   "/findings",
   "/cars",
   "/suppliers",
+  "/manufacturing",
   "/settings",
 ];
 

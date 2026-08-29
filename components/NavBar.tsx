@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { label: "Suppliers", href: "/suppliers" },
   { label: "Findings", href: "/findings" },
   { label: "CARs", href: "/cars" },
+  { label: "Manufacturing", href: "/manufacturing" },
   { label: "Settings", href: "/settings" },
 ];
 

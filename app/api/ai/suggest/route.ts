@@ -50,6 +50,18 @@ interface FindingContext {
   verdict: string;
 }
 
+interface AgendaContext {
+  supplierName: string;
+  supplierSite: string;
+  auditType: string;
+  auditDates: string[];
+  scope: string;
+  leadAuditor: string;
+  auditTeam: string[];
+  checklistSections: { title: string; questionCount: number }[];
+  previousFindings: string;
+}
+
 interface DailySummaryContext {
   supplierName: string;
   auditType: string;
@@ -78,11 +90,11 @@ interface OcrContext {
   imageBase64: string;
 }
 
-type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr";
+type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda";
 
 interface SuggestRequest {
   mode: SuggestMode;
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext;
+  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext;
 }
 
 // ---------------------------------------------------------------------------
@@ -209,6 +221,34 @@ If the image is unclear or cannot be read, state this and suggest what to re-pho
 Keep the response under 300 words. Do not fabricate values not visible in the image.`;
 }
 
+function buildAgendaPrompt(ctx: AgendaContext): string {
+  const sections = ctx.checklistSections
+    .map((s) => `- ${s.title} (${s.questionCount} questions)`)
+    .join("\n");
+  const team = ctx.auditTeam.length > 0 ? ctx.auditTeam.join(", ") : "Not specified";
+  return `You are a procurement quality engineering expert. Generate a professional supplier audit agenda and opening briefing notes.
+
+Supplier: ${ctx.supplierName}, ${ctx.supplierSite}
+Audit type: ${ctx.auditType}
+Audit dates: ${ctx.auditDates.join(", ")}
+Lead auditor: ${ctx.leadAuditor}
+Audit team: ${team}
+Scope: ${ctx.scope || "Not specified"}
+
+Checklist sections:
+${sections}
+
+${ctx.previousFindings ? `Previous findings to address:\n${ctx.previousFindings}\n` : ""}
+
+Generate:
+1. A structured day-by-day agenda with time slots (morning/afternoon) allocating time to each checklist section
+2. Opening meeting briefing notes (purpose, scope, logistics, housekeeping)
+3. Three supplier-specific risk areas to focus on based on the audit type and scope
+4. A list of requested documents to prepare before arrival
+
+Keep the total response under 500 words. Use clear headings and bullet points.`;
+}
+
 // ---------------------------------------------------------------------------
 // Truncation helper — prevent prompt injection via oversized inputs
 // ---------------------------------------------------------------------------
@@ -284,6 +324,23 @@ function sanitiseOcr(ctx: OcrContext): OcrContext {
     supplierName: truncate(ctx.supplierName, 100),
     documentType: truncate(ctx.documentType, 100),
     imageBase64: ctx.imageBase64,
+  };
+}
+
+function sanitiseAgenda(ctx: AgendaContext): AgendaContext {
+  return {
+    supplierName: truncate(ctx.supplierName, 100),
+    supplierSite: truncate(ctx.supplierSite, 100),
+    auditType: truncate(ctx.auditType, 50),
+    auditDates: (ctx.auditDates ?? []).slice(0, 10),
+    scope: truncate(ctx.scope, 400),
+    leadAuditor: truncate(ctx.leadAuditor, 100),
+    auditTeam: (ctx.auditTeam ?? []).slice(0, 10).map((n) => truncate(n, 80)),
+    checklistSections: (ctx.checklistSections ?? []).slice(0, 20).map((s) => ({
+      title: truncate(s.title, 80),
+      questionCount: Math.max(0, Math.min(999, Number(s.questionCount) || 0)),
+    })),
+    previousFindings: truncate(ctx.previousFindings, 400),
   };
 }
 
@@ -375,6 +432,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ],
         }];
         maxTokens = 600;
+        break;
+      }
+      case "agenda": {
+        const p = buildAgendaPrompt(sanitiseAgenda(body.context as AgendaContext));
+        messages = [{ role: "user", content: p }];
+        maxTokens = 700;
         break;
       }
       default:

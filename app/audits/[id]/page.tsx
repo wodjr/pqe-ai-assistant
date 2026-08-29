@@ -18,7 +18,7 @@ import {
 import { setCurrentAuditId } from "@/lib/storage/localStorage";
 import { exportAuditToJson } from "@/lib/exportBackup";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
-import { getAuditPrepSuggestion, getDailySummarySuggestion, isAIError } from "@/lib/aiSuggest";
+import { getAuditPrepSuggestion, getDailySummarySuggestion, getAgendaSuggestion, isAIError } from "@/lib/aiSuggest";
 import type { Audit, ChecklistTemplate } from "@/types/project";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
@@ -44,6 +44,10 @@ export default function AuditDetailPage() {
   const [dailyLoading, setDailyLoading] = useState(false);
   const [dailyError, setDailyError] = useState<string | null>(null);
   const [auditDay, setAuditDay] = useState(1);
+  // AI Agenda
+  const [agendaSuggestion, setAgendaSuggestion] = useState<string | null>(null);
+  const [agendaLoading, setAgendaLoading] = useState(false);
+  const [agendaError, setAgendaError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -119,6 +123,32 @@ export default function AuditDetailPage() {
       </div>
     );
 
+  async function handleAgenda() {
+    if (!audit || !checklist) return;
+    setAgendaLoading(true);
+    setAgendaError(null);
+    const result = await getAgendaSuggestion({
+      supplierName: audit.supplierName,
+      supplierSite: audit.supplierSite,
+      auditType: audit.auditType.replace(/_/g, " "),
+      auditDates: audit.auditDates,
+      scope: audit.scope,
+      leadAuditor: audit.leadAuditor,
+      auditTeam: audit.auditTeam,
+      checklistSections: checklist.sections.map((s) => ({
+        title: s.title,
+        questionCount: s.questions.length,
+      })),
+      previousFindings: "",
+    });
+    if (isAIError(result)) {
+      setAgendaError(result.error);
+    } else {
+      setAgendaSuggestion(result.suggestion);
+    }
+    setAgendaLoading(false);
+  }
+
   async function handleDailySummary() {
     if (!audit || !checklist) return;
     setDailyLoading(true);
@@ -154,9 +184,12 @@ export default function AuditDetailPage() {
   ];
 
   const auditTools = [
-    { label: "Voice Recording", href: `/audits/${id}/voice`, description: "Record and transcribe conversations", icon: "🎙" },
-    { label: "Document OCR", href: `/audits/${id}/ocr`, description: "Photograph and analyse documents", icon: "🔬" },
-    { label: "Drawing Analysis", href: `/audits/${id}/drawing`, description: "Identify CTF characteristics", icon: "📐" },
+    { label: "Voice Recording",    href: `/audits/${id}/voice`,         description: "Record and transcribe conversations", icon: "🎙" },
+    { label: "Document OCR",       href: `/audits/${id}/ocr`,           description: "Photograph and analyse documents",   icon: "🔬" },
+    { label: "Drawing Analysis",   href: `/audits/${id}/drawing`,       description: "Identify CTF characteristics",       icon: "📐" },
+    { label: "PPAP Review",        href: `/audits/${id}/ppap`,          description: "18 PPAP elements checklist",         icon: "📋" },
+    { label: "Evidence Trace",     href: `/audits/${id}/trace`,         description: "CTF vertical traceability chain",    icon: "🔗" },
+    { label: "Qualification",      href: `/audits/${id}/qualification`, description: "APPROVE / CONDITIONAL / REJECT",     icon: "🏅" },
   ];
 
   return (
@@ -292,6 +325,21 @@ export default function AuditDetailPage() {
           error={dailyError}
           onRequest={handleDailySummary}
           buttonLabel="Generate Daily Summary"
+        />
+      </Card>
+
+      {/* AI Agenda + Opening Presentation */}
+      <Card title="✦ AI Audit Agenda &amp; Opening Notes">
+        <p className="text-xs text-slate-500 mb-3">
+          Generate a day-by-day agenda, opening meeting briefing notes, risk focus areas, and
+          pre-arrival document requests. AI suggestions are advisory only.
+        </p>
+        <AISuggestionBox
+          suggestion={agendaSuggestion}
+          loading={agendaLoading}
+          error={agendaError}
+          onRequest={handleAgenda}
+          buttonLabel="Generate Agenda &amp; Opening Notes"
         />
       </Card>
     </div>

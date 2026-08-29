@@ -82,6 +82,69 @@ body {
   color: #92400e;
 }
 
+/* ─── Mobile layout fixes ───────────────────────────────────────────────── */
+@media (max-width: 375px) {
+  /* Ensure tables scroll horizontally on small screens */
+  table {
+    font-size: 12px;
+  }
+  /* Prevent badge overflow */
+  .badge {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+  /* Stack grid items on very small screens */
+  .grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  /* Prevent button overflow in flex rows */
+  .flex-wrap {
+    gap: 4px !important;
+  }
+  /* Truncate long supplier names */
+  .truncate-mobile {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ─── Accessibility improvements ────────────────────────────────────────── */
+/* Ensure interactive elements have visible focus rings */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Ensure sufficient contrast on disabled states */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Skip to main content link (accessibility) */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #3b82f6;
+  color: white;
+  padding: 8px 16px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 100;
+  border-radius: 0 0 4px 4px;
+}
+.skip-link:focus {
+  top: 0;
+}
+
 /* ─── Print styles ───────────────────────────────────────────────────────── */
 @media print {
   .no-print {

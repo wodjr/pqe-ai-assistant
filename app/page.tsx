@@ -1,15 +1,15 @@
 "use client";
 /**
  * app/page.tsx — Dashboard
- * Shows all audits, quick-access actions, and overall status summary.
+ * Shows all audits, quick-access actions, overdue CAR alerts, and overall status summary.
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { listAudits, listChecklists } from "@/lib/storage/db";
+import { listAudits, listChecklists, getCARsByAudit } from "@/lib/storage/db";
 import { getCurrentAuditId, setCurrentAuditId } from "@/lib/storage/localStorage";
 import { formatDate } from "@/lib/utils/format";
-import type { Audit, ChecklistTemplate } from "@/types/project";
+import type { Audit, ChecklistTemplate, CAR } from "@/types/project";
 import StatusBadge from "@/components/StatusBadge";
 import PageHeader from "@/components/PageHeader";
 import Card from "@/components/Card";
@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [checklists, setChecklists] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [overdueCARs, setOverdueCARs] = useState<{ car: CAR; auditName: string }[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -38,6 +39,21 @@ export default function DashboardPage() {
       setAudits(sorted);
       setChecklists(c);
       setCurrentId(getCurrentAuditId());
+
+      // Detect overdue CARs across all audits
+      const today = new Date().toISOString().slice(0, 10);
+      const overdue: { car: CAR; auditName: string }[] = [];
+      await Promise.all(
+        a.map(async (audit) => {
+          const cars = await getCARsByAudit(audit.id);
+          for (const car of cars) {
+            if (!car.isAuditorVerifiedClosed && car.dueDate && car.dueDate < today) {
+              overdue.push({ car, auditName: `${audit.supplierName} — ${audit.supplierSite}` });
+            }
+          }
+        })
+      );
+      setOverdueCARs(overdue);
       setLoading(false);
     }
     load();
@@ -88,6 +104,33 @@ export default function DashboardPage() {
             <Link href={`/audits/${activeAudit.id}/report`} className="btn-secondary text-sm">Report</Link>
           </div>
         </Card>
+      )}
+
+      {/* Overdue CARs alert */}
+      {overdueCARs.length > 0 && (
+        <div className="bg-red-50 border border-red-300 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-red-600 font-bold text-sm">⚠ {overdueCARs.length} Overdue Corrective Action{overdueCARs.length > 1 ? "s" : ""}</span>
+          </div>
+          <div className="space-y-1">
+            {overdueCARs.slice(0, 5).map(({ car, auditName }) => (
+              <div key={car.id} className="flex items-center justify-between gap-3 text-xs">
+                <span className="text-red-700">
+                  <strong>{car.reference}</strong> — {auditName} — due {car.dueDate}
+                </span>
+                <Link
+                  href={`/cars?auditId=${car.auditId}`}
+                  className="text-red-600 hover:underline font-medium shrink-0"
+                >
+                  Review →
+                </Link>
+              </div>
+            ))}
+            {overdueCARs.length > 5 && (
+              <p className="text-xs text-red-500 mt-1">…and {overdueCARs.length - 5} more</p>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Stats row */}
@@ -170,22 +213,21 @@ export default function DashboardPage() {
       </Card>
 
       {/* Quick links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link href="/checklists" className="block bg-white border border-slate-200 rounded-lg p-5 hover:shadow-md transition-shadow">
-          <div className="text-2xl mb-2">📁</div>
-          <div className="font-semibold text-slate-700">Checklist Templates</div>
-          <div className="text-xs text-slate-500 mt-1">Import and manage Excel audit checklists</div>
-        </Link>
-        <Link href="/findings" className="block bg-white border border-slate-200 rounded-lg p-5 hover:shadow-md transition-shadow">
-          <div className="text-2xl mb-2">🔍</div>
-          <div className="font-semibold text-slate-700">Findings Log</div>
-          <div className="text-xs text-slate-500 mt-1">Record and classify audit findings</div>
-        </Link>
-        <Link href="/settings" className="block bg-white border border-slate-200 rounded-lg p-5 hover:shadow-md transition-shadow">
-          <div className="text-2xl mb-2">⚙️</div>
-          <div className="font-semibold text-slate-700">Settings &amp; Backup</div>
-          <div className="text-xs text-slate-500 mt-1">Export, restore and reset audit data</div>
-        </Link>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {[
+          { href: "/checklists",    icon: "📁", label: "Checklists",     desc: "Import and manage Excel checklists" },
+          { href: "/findings",      icon: "🔍", label: "Findings",       desc: "Record and classify audit findings" },
+          { href: "/suppliers",     icon: "📊", label: "Suppliers",       desc: "Risk dashboard and audit history" },
+          { href: "/cars",          icon: "📋", label: "CARs",            desc: "Corrective action tracking" },
+          { href: "/manufacturing", icon: "⚙️", label: "Manufacturing",   desc: "Process knowledge modules" },
+          { href: "/settings",      icon: "🔧", label: "Settings",        desc: "Export, restore and reset data" },
+        ].map((l) => (
+          <Link key={l.href} href={l.href} className="block bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div className="text-xl mb-1">{l.icon}</div>
+            <div className="font-semibold text-slate-700 text-sm">{l.label}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{l.desc}</div>
+          </Link>
+        ))}
       </div>
     </div>
   );

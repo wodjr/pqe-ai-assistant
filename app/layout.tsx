@@ -23,9 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-slate-50">
+        <a href="#main-content" className="skip-link">Skip to main content</a>
         <PrototypeBanner />
         <NavBar />
-        <main className="flex-1 w-full max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
+        <main id="main-content" className="flex-1 w-full max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
           {children}
         </main>
         <footer className="text-center text-xs text-slate-400 py-4 border-t border-slate-200">

@@ -1,0 +1,311 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Add OpenAI API Key to Vercel</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    background: #ffffff;
+    color: #1f2328;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 24px 48px;
+  }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #57606a; font-size: 13px; margin-bottom: 32px; }
+  .intro {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-left: 4px solid #3b82d4;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 32px;
+    font-size: 13px;
+    color: #1f2328;
+  }
+  .intro strong { color: #3b82d4; }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 28px;
+    align-items: flex-start;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #3b82d4;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-title { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .step-desc { color: #1f2328; font-size: 13px; margin-bottom: 8px; }
+  .step-desc p + p { margin-top: 6px; }
+
+  .url-box {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 12px;
+    color: #3b82d4;
+    word-break: break-all;
+    margin-bottom: 6px;
+  }
+  .hint { font-size: 12px; color: #57606a; margin-top: 4px; }
+
+  .field-row {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .field-label { font-size: 11px; font-weight: 600; color: #57606a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .field-value { font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; color: #1f2328; }
+  .field-value.key { color: #3b82d4; }
+  .field-value.note { font-family: inherit; color: #57606a; font-size: 12px; }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .checkbox {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #3b82d4;
+    border-radius: 3px;
+    background: #3b82d4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .checkbox::after { content: "✓"; color: white; font-size: 10px; font-weight: bold; }
+  .checkbox.unchecked { background: white; border-color: #e5e7eb; }
+  .checkbox.unchecked::after { display: none; }
+
+  .button-mock {
+    display: inline-block;
+    background: #000;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 5px;
+    margin-top: 6px;
+  }
+  .button-mock.secondary {
+    background: #f7f8fa;
+    color: #1f2328;
+    border: 1px solid #e5e7eb;
+  }
+
+  .warning {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #92400e;
+    margin-top: 8px;
+  }
+  .warning strong { color: #b45309; }
+
+  .success {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #166534;
+    margin-top: 32px;
+  }
+  .success strong { font-size: 15px; display: block; margin-bottom: 6px; }
+  .success ul { padding-left: 18px; margin-top: 6px; }
+  .success li { margin-bottom: 3px; }
+
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 28px 0; }
+
+  .where-to-get {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 28px;
+  }
+  .where-to-get h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  .where-to-get ol { padding-left: 18px; font-size: 13px; color: #1f2328; }
+  .where-to-get li { margin-bottom: 4px; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    font-size: 12px;
+    color: #57606a;
+  }
+</style>
+</head>
+<body>
+
+<h1>Add Your OpenAI API Key to Vercel</h1>
+<p class="subtitle">Activate AI features on your live PQE AI Assistant deployment</p>
+
+<div class="intro">
+  Your app is already live at <strong>https://pqe-ai-assistant.vercel.app</strong><br />
+  Everything works except AI features — they need your OpenAI API key added as a server-side environment variable in Vercel.
+  This takes about 2 minutes.
+</div>
+
+
+<div class="where-to-get">
+  <h3>Don't have an OpenAI API key yet?</h3>
+  <ol>
+    <li>Go to <strong>https://platform.openai.com/api-keys</strong></li>
+    <li>Sign in or create a free account</li>
+    <li>Click <strong>Create new secret key</strong></li>
+    <li>Copy the key — it starts with <code>sk-</code> and you can only see it once</li>
+    <li>Make sure your account has billing set up (Settings → Billing) — GPT-4o-mini is very low cost</li>
+  </ol>
+</div>
+
+<hr class="divider" />
+
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <div class="step-title">Open your project's Environment Variables settings</div>
+    <div class="step-desc">
+      <p>Copy and paste this URL directly into your browser address bar:</p>
+    </div>
+    <div class="url-box">https://vercel.com/wodjric-2732s-projects/pqe-ai-assistant/settings/environment-variables</div>
+    <div class="hint">You'll be asked to log in if your session has expired. Use the same account you deployed from.</div>
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <div class="step-title">Click "Add New" at the top of the page</div>
+    <div class="step-desc">
+      <p>Look for an <strong>Add New</strong> button near the top of the Environment Variables section. Click it — a form will expand below.</p>
+    </div>
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <div class="step-title">Fill in the Key and Value fields</div>
+    <div class="step-desc"><p>Enter exactly the following — copy and paste the Key name to avoid typos:</p></div>
+
+    <div class="field-row">
+      <div class="field-label">Key (name)</div>
+      <div class="field-value key">OPENAI_API_KEY</div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Value</div>
+      <div class="field-value note">Paste your key here — it starts with sk-proj-... or sk-...</div>
+    </div>
+
+    <div class="warning">
+      <strong>Important:</strong> Never share this key with anyone or paste it into any code file.
+      Vercel stores it encrypted and only injects it into your server-side routes at build time.
+    </div>
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <div class="step-title">Select which environments to apply it to</div>
+    <div class="step-desc"><p>You'll see three checkboxes. Tick <strong>Production</strong> at minimum. Optionally also tick Preview and Development if you want AI to work in dev mode too.</p></div>
+
+    <div class="checkbox-row"><span class="checkbox"></span> <strong>Production</strong> ← required</div>
+    <div class="checkbox-row"><span class="checkbox unchecked"></span> Preview (optional)</div>
+    <div class="checkbox-row"><span class="checkbox unchecked"></span> Development (optional)</div>
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-body">
+    <div class="step-title">Click Save</div>
+    <div class="step-desc">
+      <p>Click the black <strong>Save</strong> button. The key will appear in the list with its value hidden (shown as ••••••••).</p>
+    </div>
+    <div class="button-mock">Save</div>
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-num">6</div>
+  <div class="step-body">
+    <div class="step-title">Redeploy to apply the new environment variable</div>
+    <div class="step-desc">
+      <p>Environment variables only take effect after a new deployment. To redeploy:</p>
+      <p>1. Click <strong>Deployments</strong> in the top navigation of your project</p>
+      <p>2. Find the latest deployment at the top of the list</p>
+      <p>3. Click the <strong>⋯</strong> (three dots) button on the right side of that row</p>
+      <p>4. Click <strong>Redeploy</strong></p>
+      <p>5. In the confirmation dialog that appears, click <strong>Redeploy</strong> again</p>
+    </div>
+    <div class="hint">The deployment takes about 60 seconds. A green "Ready" badge will appear when done.</div>
+  </div>
+</div>
+
+
+<div class="step">
+  <div class="step-num">7</div>
+  <div class="step-body">
+    <div class="step-title">Test the AI features</div>
+    <div class="step-desc">
+      <p>Once redeployed, open your app and test:</p>
+      <p>1. Create or open an audit → go to <strong>Audit Hub</strong> → click <strong>Generate Audit Prep Plan</strong></p>
+      <p>2. If you see a suggestion appear in the amber box, AI is working correctly</p>
+      <p>3. If you see an error, double-check the key was saved correctly (no extra spaces)</p>
+    </div>
+  </div>
+</div>
+
+<div class="success">
+  <strong>✓ All AI features will then be active:</strong>
+  <ul>
+    <li>Audit preparation plan (Audit Hub)</li>
+    <li>End-of-day daily summary (Audit Hub)</li>
+    <li>Per-question verification guidance (Auditor Verification)</li>
+    <li>Finding suggestion (Findings form)</li>
+    <li>OCR document analysis — photo → GPT-4o vision</li>
+    <li>Technical drawing CTF analysis — photo → GPT-4o vision</li>
+    <li>Voice recording transcription — Whisper</li>
+  </ul>
+</div>
+
+<footer>Made with IBM Bob</footer>
+</body>
+</html>

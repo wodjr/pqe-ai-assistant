@@ -47,6 +47,18 @@ export interface VerificationContext {
   supplierStatus: string;
 }
 
+export interface AgendaContext {
+  supplierName: string;
+  supplierSite: string;
+  auditType: string;
+  auditDates: string[];
+  scope: string;
+  leadAuditor: string;
+  auditTeam: string[];
+  checklistSections: { title: string; questionCount: number }[];
+  previousFindings: string;
+}
+
 export interface FindingContext {
   auditType: string;
   supplierName: string;
@@ -89,8 +101,8 @@ export interface OcrContext {
 // ---------------------------------------------------------------------------
 
 async function callAI(
-  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr",
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext
+  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda",
+  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext
 ): Promise<AISuggestionResponse> {
   try {
     const res = await fetch("/api/ai/suggest", {
@@ -139,4 +151,10 @@ export async function getOcrAnalysis(
   ctx: OcrContext
 ): Promise<AISuggestionResponse> {
   return callAI("ocr", ctx);
+}
+
+export async function getAgendaSuggestion(
+  ctx: AgendaContext
+): Promise<AISuggestionResponse> {
+  return callAI("agenda", ctx);
 }

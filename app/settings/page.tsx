@@ -196,6 +196,46 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/* Scoring Rules */}
+      <Card title="Scoring Thresholds">
+        <div className="space-y-4 text-sm">
+          <p className="text-slate-600">
+            Define pass/fail thresholds for audit scores. These are displayed as reference only —
+            the final qualification decision always requires explicit auditor sign-off.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { label: "Pass Threshold (%)", key: "pqe:scorePass", defaultVal: "80", description: "Score ≥ this % = pass" },
+              { label: "Conditional (%)", key: "pqe:scoreCond", defaultVal: "60", description: "Score ≥ this % = conditional" },
+              { label: "Fail Below (%)", key: "pqe:scoreFail", defaultVal: "60", description: "Score < this % = fail" },
+            ].map((field) => {
+              const stored = typeof window !== "undefined"
+                ? localStorage.getItem(field.key) ?? field.defaultVal
+                : field.defaultVal;
+              return (
+                <div key={field.key}>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">{field.label}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    defaultValue={stored}
+                    onChange={(e) => {
+                      if (typeof window !== "undefined") localStorage.setItem(field.key, e.target.value);
+                    }}
+                    className="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-slate-400 mt-0.5">{field.description}</p>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-400">
+            Changes are saved automatically to localStorage in this browser.
+          </p>
+        </div>
+      </Card>
+
       {/* Factory reset */}
       <Card title="Factory Reset">
         <div className="space-y-3 text-sm">
