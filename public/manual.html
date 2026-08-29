@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PQE AI Assistant — User Manual</title>
+<style>
+  /* ── Reset ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Page / Body ── */
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #1f2328;
+    background: #fff;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 32px 60px;
+  }
+
+  /* ── Typography ── */
+  h1 { font-size: 26px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+  h2 { font-size: 17px; font-weight: 700; color: #0f172a; margin: 36px 0 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+  h3 { font-size: 14px; font-weight: 700; color: #1e3a5f; margin: 20px 0 6px; }
+  h4 { font-size: 13px; font-weight: 600; color: #334155; margin: 14px 0 4px; }
+  p  { margin-bottom: 8px; color: #334155; }
+  ul, ol { padding-left: 20px; margin-bottom: 10px; }
+  li { margin-bottom: 3px; color: #334155; }
+  strong { color: #0f172a; }
+  code {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 11px;
+    background: #f1f5f9;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #1e40af;
+  }
+  a { color: #2563eb; text-decoration: none; }
+
+  /* ── Cover ── */
+  .cover {
+    text-align: center;
+    padding: 48px 0 40px;
+    border-bottom: 3px solid #1e3a8a;
+    margin-bottom: 36px;
+  }
+  .cover .badge {
+    display: inline-block;
+    background: #1d4ed8;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    padding: 4px 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+  .cover h1 { font-size: 32px; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 15px; color: #64748b; margin-bottom: 20px; }
+  .cover .meta { font-size: 12px; color: #94a3b8; }
+  .cover .url { font-size: 13px; color: #2563eb; margin-top: 6px; font-weight: 600; }
+
+  /* ── TOC ── */
+  .toc { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px 24px; margin-bottom: 36px; }
+  .toc h2 { font-size: 14px; margin: 0 0 12px; border: none; padding: 0; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; font-size: 12px; }
+  .toc a { color: #2563eb; }
+
+  /* ── Notice boxes ── */
+  .notice {
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 12px;
+  }
+  .notice-warning  { background: #fffbeb; border-left: 4px solid #f59e0b; color: #78350f; }
+  .notice-info     { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e3a8a; }
+  .notice-success  { background: #f0fdf4; border-left: 4px solid #22c55e; color: #14532d; }
+  .notice-critical { background: #fef2f2; border-left: 4px solid #ef4444; color: #7f1d1d; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  th { background: #f1f5f9; text-align: left; padding: 7px 10px; font-weight: 700; border: 1px solid #e2e8f0; color: #0f172a; }
+  td { padding: 6px 10px; border: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  /* ── Step list ── */
+  .steps { counter-reset: step; padding-left: 0; list-style: none; }
+  .steps li { counter-increment: step; display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+  .steps li::before {
+    content: counter(step);
+    background: #1d4ed8;
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Workflow diagram ── */
+  .workflow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 16px 0;
+    align-items: center;
+  }
+  .workflow-step {
+    background: #1d4ed8;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 4px;
+    text-align: center;
+    min-width: 80px;
+  }
+  .workflow-arrow {
+    color: #94a3b8;
+    font-size: 14px;
+    padding: 0 4px;
+  }
+
+  /* ── Page breaks ── */
+  .page-break { page-break-before: always; }
+
+  /* ── Feature row ── */
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .feature-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #f8fafc;
+  }
+  .feature-card .icon { font-size: 18px; margin-bottom: 4px; }
+  .feature-card .name { font-size: 12px; font-weight: 700; color: #0f172a; }
+  .feature-card .desc { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+  /* ── AI badge ── */
+  .ai-badge {
+    display: inline-block;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    margin-left: 4px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 11px;
+    color: #94a3b8;
+    text-align: center;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { padding: 20px 24px; font-size: 12px; }
+    h2 { page-break-after: avoid; }
+    h3 { page-break-after: avoid; }
+    table { page-break-inside: avoid; }
+    .notice { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .toc { page-break-after: always; }
+    a { color: #1e3a8a; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════ COVER -->
+<div class="cover">
+  <div class="badge">PQE</div>
+  <h1>PQE AI Assistant</h1>
+  <p class="subtitle">Procurement Quality Engineering — AI-Assisted Supplier Audit Platform</p>
+  <p class="meta">User Manual &nbsp;·&nbsp; Version 0.2.0 &nbsp;·&nbsp; Prototype Release</p>
+  <p class="url">https://pqe-ai-assistant.vercel.app</p>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ TOC -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#overview">1. Overview and Purpose</a></li>
+    <li><a href="#getstarted">2. Getting Started</a></li>
+    <li><a href="#workflow">3. Core Audit Workflow</a></li>
+    <li><a href="#checklists">4. Checklist Templates</a></li>
+    <li><a href="#newaudit">5. Creating an Audit</a></li>
+    <li><a href="#audithub">6. Audit Hub</a></li>
+    <li><a href="#supplier">7. Supplier Self-Assessment</a></li>
+    <li><a href="#verify">8. Auditor Onsite Verification</a></li>
+    <li><a href="#findings">9. Findings Log</a></li>
+    <li><a href="#cars">10. Corrective Action Requests (CARs)</a></li>
+    <li><a href="#ppap">11. PPAP Evidence Review</a></li>
+    <li><a href="#trace">12. Vertical Evidence Trace</a></li>
+    <li><a href="#qualification">13. Supplier Qualification Decision</a></li>
+    <li><a href="#report">14. Audit Report</a></li>
+    <li><a href="#aitools">15. AI Onsite Tools</a></li>
+    <li><a href="#suppliers">16. Supplier Risk Dashboard</a></li>
+    <li><a href="#manufacturing">17. Manufacturing Knowledge</a></li>
+    <li><a href="#ai">18. AI Features and Controls</a></li>
+    <li><a href="#settings">19. Settings, Backup and Reset</a></li>
+    <li><a href="#storage">20. Storage and Data</a></li>
+    <li><a href="#security">21. Security and Privacy</a></li>
+    <li><a href="#faq">22. Frequently Asked Questions</a></li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ 1. OVERVIEW -->
+<h2 id="overview">1. Overview and Purpose</h2>
+
+<p>
+  PQE AI Assistant is a mobile-first web application designed to support Procurement Quality Engineers,
+  Supplier Quality Engineers, and manufacturing process auditors throughout the complete supplier
+  qualification and onsite audit lifecycle.
+</p>
+<p>
+  The application combines a structured audit workflow with AI assistance (powered by OpenAI GPT-4o
+  and Whisper) to help auditors prepare more effectively, identify risks faster, and produce
+  professional audit records — while keeping all final decisions firmly in human hands.
+</p>
+
+<div class="notice notice-critical">
+  <strong>⚠ PROTOTYPE VERSION</strong> — All data is stored in your browser's IndexedDB only.
+  Data is not encrypted at rest and will be lost if you clear your browser data.
+  This application is not approved for storing real production supplier data, confidential drawings,
+  or personally identifiable information until a server-side database is deployed.
+</div>
+
+<h3>Target Users</h3>
+<ul>
+  <li><strong>Lead Auditors / PQEs</strong> — plan, execute, and close supplier audits</li>
+  <li><strong>Supplier Quality Engineers</strong> — verify corrective actions and manage CAR follow-up</li>
+  <li><strong>Supplier Contacts</strong> — complete pre-audit self-assessments (via the Supplier Assessment page)</li>
+  <li><strong>Quality Managers</strong> — review the Supplier Risk Dashboard and audit history</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ 2. GET STARTED -->
+<h2 id="getstarted">2. Getting Started</h2>
+
+<h3>Accessing the App</h3>
+<ol class="steps">
+  <li>Open <strong>https://pqe-ai-assistant.vercel.app</strong> in any modern browser (Chrome, Safari, Firefox, Edge).</li>
+  <li>The app works on mobile and desktop. On mobile, add it to your home screen for a native-app feel.</li>
+  <li>No login or account is required for the prototype version.</li>
+</ol>
+
+<h3>First-time Setup</h3>
+<ol class="steps">
+  <li>Go to <strong>Settings</strong> (navigation bar) and enter your name in the <em>Auditor Preferences</em> field. Click <strong>Save</strong>.</li>
+  <li>Your name will be auto-filled as Lead Auditor on new audits and as the verifying auditor on approvals.</li>
+  <li>Go to <strong>Checklists</strong> and import your Excel audit questionnaire to create your first checklist template.</li>
+</ol>
+
+<div class="notice notice-info">
+  <strong>Tip:</strong> The app works offline once loaded. All audit data is stored locally in your browser — no internet connection is required for data entry, only for AI features.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 3. WORKFLOW -->
+<h2 id="workflow">3. Core Audit Workflow</h2>
+
+<p>The recommended workflow follows these stages in order:</p>
+
+<div class="workflow">
+  <div class="workflow-step">Import<br>Checklist</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step">Create<br>Audit</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step">Supplier<br>Self-Assessment</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step">Onsite<br>Verification</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step">Record<br>Findings</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step">Raise<br>CARs</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step">PPAP /<br>Trace</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step">Generate<br>Report</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step">Qualification<br>Decision</div>
+</div>
+
+<table>
+  <tr><th>Stage</th><th>Who</th><th>Page</th></tr>
+  <tr><td>Import Excel checklist</td><td>Auditor</td><td>Checklists</td></tr>
+  <tr><td>Create audit record</td><td>Auditor</td><td>Audits → New Audit</td></tr>
+  <tr><td>Send self-assessment to supplier</td><td>Auditor shares the URL</td><td>Audit Hub → Supplier Assessment</td></tr>
+  <tr><td>Supplier completes self-assessment</td><td>Supplier contact</td><td>Supplier Assessment</td></tr>
+  <tr><td>Auditor onsite verification</td><td>Auditor</td><td>Auditor Verification</td></tr>
+  <tr><td>Record findings</td><td>Auditor</td><td>Findings Log</td></tr>
+  <tr><td>Raise and track CARs</td><td>Auditor / Supplier</td><td>CARs</td></tr>
+  <tr><td>PPAP evidence review</td><td>Auditor</td><td>PPAP Review</td></tr>
+  <tr><td>Evidence trace</td><td>Auditor</td><td>Evidence Trace</td></tr>
+  <tr><td>Generate and approve report</td><td>Auditor</td><td>Report</td></tr>
+  <tr><td>Record qualification decision</td><td>Lead Auditor</td><td>Qualification</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════ 4. CHECKLISTS -->
+<div class="page-break"></div>
+<h2 id="checklists">4. Checklist Templates</h2>
+
+<p>
+  Checklists are imported from Excel workbooks (.xlsx) and stored as controlled templates.
+  The original workbook is preserved read-only in your browser storage.
+</p>
+
+<h3>Importing a Checklist</h3>
+<ol class="steps">
+  <li>Navigate to <strong>Checklists</strong> in the navigation bar.</li>
+  <li>Click <strong>Import Excel Checklist</strong>.</li>
+  <li>Select your <code>.xlsx</code> file. The file must be structured with columns for reference, question text, guidance, max score, and mandatory flag. (See Excel format below.)</li>
+  <li>Enter a <strong>Checklist Name</strong> and <strong>Revision</strong> number.</li>
+  <li>Click <strong>Import</strong>. The checklist is parsed and stored. The original file is preserved.</li>
+</ol>
+
+<h3>Expected Excel Format</h3>
+<table>
+  <tr><th>Column A</th><th>Column B</th><th>Column C</th><th>Column D</th><th>Column E</th><th>Column F</th></tr>
+  <tr><td>Section title (merged row)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td>Reference (e.g. 4.1.2)</td><td>Question text</td><td>Guidance notes</td><td>Max score</td><td>Scoring basis</td><td>Mandatory (Y/N)</td></tr>
+</table>
+<p>Rows where Column A contains a section heading (no reference number format) are treated as section dividers.</p>
+
+<!-- ══════════════════════════════════════════════════════════ 5. NEW AUDIT -->
+<h2 id="newaudit">5. Creating an Audit</h2>
+
+<ol class="steps">
+  <li>Go to <strong>Audits</strong> → click <strong>+ New Audit</strong>.</li>
+  <li>Select the <strong>Checklist Template</strong> to use for this audit.</li>
+  <li>Fill in <strong>Supplier Name</strong>, <strong>Site / Location</strong>, and <strong>Supplier Contact</strong>.</li>
+  <li>Select <strong>Audit Type</strong>: Qualification, Process, Line, Investigation, or CAR Verification.</li>
+  <li>Set <strong>Audit Dates</strong> (one or more days).</li>
+  <li>Enter the <strong>Lead Auditor</strong> name and any additional <strong>Team Members</strong>.</li>
+  <li>Add a <strong>Scope</strong> description — this is used by AI features for context.</li>
+  <li>Click <strong>Create Audit</strong>. You are taken to the Audit Hub.</li>
+</ol>
+
+<!-- ══════════════════════════════════════════════════════════ 6. AUDIT HUB -->
+<h2 id="audithub">6. Audit Hub</h2>
+
+<p>The Audit Hub is the central page for a specific audit. From here you can navigate to all workflow stages and access AI tools.</p>
+
+<h3>Sections</h3>
+<table>
+  <tr><th>Section</th><th>Description</th></tr>
+  <tr><td>Audit Info</td><td>Status, lead auditor, dates, checklist revision, scope</td></tr>
+  <tr><td>Audit Status</td><td>Manually advance status: DRAFT → IN PROGRESS → PENDING APPROVAL → CLOSED</td></tr>
+  <tr><td>Workflow Steps</td><td>Quick links to: Supplier Assessment, Verification, Findings, CARs, Report</td></tr>
+  <tr><td>Onsite AI Tools</td><td>Voice Recording, Document OCR, Drawing Analysis, PPAP Review, Evidence Trace, Qualification</td></tr>
+  <tr><td>✦ AI Audit Prep</td><td>AI-generated risk-based preparation plan <span class="ai-badge">AI</span></td></tr>
+  <tr><td>✦ AI Daily Summary</td><td>End-of-day summary based on current progress <span class="ai-badge">AI</span></td></tr>
+  <tr><td>✦ AI Agenda &amp; Opening Notes</td><td>Day-by-day agenda and opening meeting briefing <span class="ai-badge">AI</span></td></tr>
+  <tr><td>Agenda</td><td>Free-text agenda field set during audit creation</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════ 7. SELF-ASSESSMENT -->
+<div class="page-break"></div>
+<h2 id="supplier">7. Supplier Self-Assessment</h2>
+
+<p>
+  The supplier (or the auditor on behalf of the supplier) fills in a conformance status, score,
+  response text, and supporting evidence for each checklist question.
+</p>
+
+<h3>Steps</h3>
+<ol class="steps">
+  <li>From the Audit Hub, click <strong>Supplier Self-Assessment</strong>.</li>
+  <li>Select the form language: English, Español, Deutsch, Français, or 中文 using the language toggle at the top.</li>
+  <li>For each question, click to expand and select a <strong>Conformance Status</strong>: Conforming, Minor NC, Major NC, Not Applicable, or Not Assessed.</li>
+  <li>Enter a score (if the checklist has scoring), a written response, and any comments.</li>
+  <li>Attach supporting evidence files (photos, PDFs) using the <strong>Upload Evidence</strong> button.</li>
+  <li>Click <strong>Save Response</strong> for each question. Progress is shown in the bar at the top.</li>
+</ol>
+
+<div class="notice notice-warning">
+  Supplier responses are kept completely separate from auditor verdicts. A supplier marking a question
+  "Conforming" does not auto-approve it. The auditor must independently verify each item.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 8. VERIFICATION -->
+<h2 id="verify">8. Auditor Onsite Verification</h2>
+
+<p>
+  This is the core onsite audit activity. The auditor reviews each checklist item independently of
+  the supplier response and records their own verdict based on objective evidence.
+</p>
+
+<h3>Steps</h3>
+<ol class="steps">
+  <li>From the Audit Hub, click <strong>Auditor Verification</strong>.</li>
+  <li>For each question, click to expand. The supplier's response is shown in a blue read-only panel for reference.</li>
+  <li>Optionally click <strong>Get AI Verification Guidance</strong> for suggested follow-up questions and evidence to request. <span class="ai-badge">AI</span></li>
+  <li>Select your <strong>Auditor Verdict</strong>: Conforms, Minor NC, Major NC, Not Verifiable, or Not Applicable.</li>
+  <li>Enter a score (if scored checklist) and detailed <strong>Auditor Notes</strong> recording objective evidence observed.</li>
+  <li>Attach photos and documents as evidence using the <strong>Evidence</strong> upload.</li>
+  <li>Check the <strong>I confirm</strong> approval checkbox to mark the item as auditor-approved.</li>
+  <li>Click <strong>Save Verification</strong>.</li>
+  <li>When all items are assessed, click <strong>Proceed to Findings</strong>.</li>
+</ol>
+
+<div class="notice notice-critical">
+  <strong>Critical control:</strong> The approval checkbox (<em>isApproved</em>) can only be set by
+  explicitly checking the box. AI suggestions have absolutely no effect on this field.
+  Unchecking reverts to unapproved regardless of AI content.
+</div>
+
+<h3>Verdicts Explained</h3>
+<table>
+  <tr><th>Verdict</th><th>Meaning</th></tr>
+  <tr><td>Conforms</td><td>Objective evidence confirms the requirement is met</td></tr>
+  <tr><td>Minor NC</td><td>Partial non-conformance — does not prevent use but requires correction</td></tr>
+  <tr><td>Major NC</td><td>Significant non-conformance — requires corrective action before approval</td></tr>
+  <tr><td>Not Verifiable</td><td>Insufficient evidence available during the audit to verify</td></tr>
+  <tr><td>Not Applicable</td><td>The requirement does not apply to this supplier / process</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════ 9. FINDINGS -->
+<h2 id="findings">9. Findings Log</h2>
+
+<p>
+  Findings are formal records of non-conformances, observations, and improvement opportunities
+  identified during the audit.
+</p>
+
+<h3>Creating a Finding</h3>
+<ol class="steps">
+  <li>Go to <strong>Findings</strong> in the navigation (or via Audit Hub → Findings).</li>
+  <li>Select the relevant audit from the dropdown.</li>
+  <li>Click <strong>+ New Finding</strong>.</li>
+  <li>Select the <strong>Classification</strong>: Major NC, Minor NC, Observation, or OFI.</li>
+  <li>Enter a <strong>Title</strong> and <strong>Description</strong>.</li>
+  <li>Optionally click <strong>Get AI Finding Suggestion</strong> to get a draft finding statement. <span class="ai-badge">AI</span></li>
+  <li>Check <strong>Raise a CAR</strong> if a corrective action is required — a CAR record is created automatically.</li>
+  <li>Click <strong>Create Finding</strong>.</li>
+</ol>
+
+<h3>Approving a Finding</h3>
+<p>
+  Findings are created as <strong>Draft</strong>. To make a finding official, expand it and click
+  <strong>Approve Finding</strong>. This sets <code>isAuditorApproved = true</code> and records the
+  approving auditor. AI cannot approve findings.
+</p>
+
+<!-- ══════════════════════════════════════════════════════════ 10. CARS -->
+<div class="page-break"></div>
+<h2 id="cars">10. Corrective Action Requests (CARs)</h2>
+
+<p>CARs follow a full 8D problem-solving workflow from containment through to auditor-verified closure.</p>
+
+<h3>8D Status Flow</h3>
+<div class="workflow">
+  <div class="workflow-step" style="background:#dc2626">OPEN</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step" style="background:#d97706">CONTAINMENT</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step" style="background:#ca8a04">ROOT CAUSE</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step" style="background:#2563eb">CORRECTIVE ACTION</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step" style="background:#7c3aed">EFFECTIVENESS</div><div class="workflow-arrow">→</div>
+  <div class="workflow-step" style="background:#16a34a">CLOSED</div>
+</div>
+
+<h3>Managing a CAR</h3>
+<ol class="steps">
+  <li>Go to <strong>CARs</strong> and select the audit.</li>
+  <li>Expand the CAR. Fill in <strong>Owner</strong> (supplier contact responsible) and <strong>Due Date</strong>.</li>
+  <li>Fill in each 8D field: D1–D3 Containment, D4 Root Cause, D5–D6 Corrective Action, D7 Effectiveness.</li>
+  <li>Upload effectiveness evidence files.</li>
+  <li>Click <strong>Save Updates</strong> to save changes, or <strong>Advance to Next Step</strong> to move to the next 8D stage.</li>
+  <li>When the CAR is at <strong>EFFECTIVENESS</strong> stage and you have verified the actions are effective, click <strong>✓ Auditor Verified Closed</strong>. A confirmation dialog appears.</li>
+</ol>
+
+<div class="notice notice-critical">
+  <strong>Critical control:</strong> <code>isAuditorVerifiedClosed</code> can only be set by the
+  explicit confirmation dialog. AI cannot close CARs. Past-due CARs are automatically flagged
+  OVERDUE and shown on the Dashboard.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 11. PPAP -->
+<h2 id="ppap">11. PPAP Evidence Review</h2>
+
+<p>
+  The PPAP page provides a structured review of all 18 PPAP elements. Access it from the Audit Hub
+  → <strong>PPAP Review</strong>.
+</p>
+
+<h3>PPAP Elements Covered</h3>
+<table>
+  <tr><th>#</th><th>Element</th><th>#</th><th>Element</th></tr>
+  <tr><td>1</td><td>Design Records</td><td>10</td><td>Material / Performance Test Results</td></tr>
+  <tr><td>2</td><td>Authorised Engineering Change</td><td>11</td><td>Initial Process Studies (Cpk)</td></tr>
+  <tr><td>3</td><td>Customer Engineering Approval</td><td>12</td><td>Qualified Laboratory Documentation</td></tr>
+  <tr><td>4</td><td>Design FMEA</td><td>13</td><td>Appearance Approval Report</td></tr>
+  <tr><td>5</td><td>Process Flow Diagram</td><td>14</td><td>Sample Production Parts</td></tr>
+  <tr><td>6</td><td>Process FMEA</td><td>15</td><td>Master Sample</td></tr>
+  <tr><td>7</td><td>Control Plan</td><td>16</td><td>Checking Aids</td></tr>
+  <tr><td>8</td><td>Measurement System Analysis</td><td>17</td><td>Customer-Specific Requirements</td></tr>
+  <tr><td>9</td><td>Dimensional Results</td><td>18</td><td>Part Submission Warrant (PSW)</td></tr>
+</table>
+
+<p>
+  For each element, set the status to <strong>Submitted / Reviewed / Accepted / Rejected / Not Required</strong>,
+  add auditor notes, and attach evidence. Accepting an element requires a confirmation dialog.
+  The PSW (element 18) shows a banner when accepted — confirming PPAP submission is complete.
+</p>
+
+<!-- ══════════════════════════════════════════════════════════ 12. TRACE -->
+<h2 id="trace">12. Vertical Evidence Trace</h2>
+
+<p>
+  The Evidence Trace page allows the auditor to verify traceability from a CTF (Critical-to-Function)
+  characteristic on a drawing through to the inspection result — a complete vertical chain.
+</p>
+
+<h3>Trace Chain Steps</h3>
+<ol>
+  <li><strong>Drawing</strong> — CTF characteristic with balloon number, tolerance, and datum</li>
+  <li><strong>PFMEA</strong> — Characteristic listed with failure mode, severity, occurrence, detection</li>
+  <li><strong>Control Plan</strong> — Method, frequency, reaction plan, responsible party</li>
+  <li><strong>Work Instruction</strong> — Operator instruction references the characteristic</li>
+  <li><strong>Measurement System</strong> — Calibrated equipment with GR&amp;R ≤ 10%</li>
+  <li><strong>Inspection Result</strong> — Actual data showing conformance (Cpk ≥ 1.33 / 1.67 for CTF)</li>
+</ol>
+
+<p>
+  You can create multiple characteristics (chains) for the same audit. Each link can be
+  Verified, Gap Found, Not Applicable, or Not Checked. Verifying a link requires confirmation.
+  Evidence can be attached to each individual link in the chain.
+</p>
+
+<!-- ═══════════════════════════════════════════════════ 13. QUALIFICATION -->
+<div class="page-break"></div>
+<h2 id="qualification">13. Supplier Qualification Decision</h2>
+
+<p>
+  The Qualification page records the formal APPROVE / CONDITIONAL / REJECT decision.
+  It is accessible from the Audit Hub → <strong>Qualification</strong>.
+</p>
+
+<div class="notice notice-critical">
+  <strong>Mandatory prerequisites before a decision can be recorded:</strong>
+  <ul style="margin-top:6px">
+    <li>Audit report must be generated</li>
+    <li>Report must be auditor-approved</li>
+    <li>Recommended: no open major findings, no open CARs</li>
+  </ul>
+  AI cannot make, suggest, or influence the qualification decision.
+</div>
+
+<h3>Decision Options</h3>
+<table>
+  <tr><th>Decision</th><th>Meaning</th></tr>
+  <tr><td>✓ Approved</td><td>Supplier meets all requirements. Approved for production supply.</td></tr>
+  <tr><td>⚠ Conditionally Approved</td><td>Approved subject to conditions being met and verified. Record conditions in the text field.</td></tr>
+  <tr><td>✕ Rejected</td><td>Supplier does not meet requirements. Not approved for production supply.</td></tr>
+  <tr><td>◷ Deferred</td><td>Decision deferred pending further information or re-audit.</td></tr>
+</table>
+<p>Clicking any decision button opens a confirmation dialog showing the supplier name, decision, auditor name, and date before recording.</p>
+
+<!-- ══════════════════════════════════════════════════════════ 14. REPORT -->
+<h2 id="report">14. Audit Report</h2>
+
+<p>
+  The Report page generates a print-ready HTML audit report and records the auditor's formal approval.
+</p>
+
+<h3>Generating the Report</h3>
+<ol class="steps">
+  <li>From the Audit Hub, click <strong>Generate Report</strong>.</li>
+  <li>Select a <strong>Qualification Recommendation</strong>.</li>
+  <li>Write the <strong>Conclusion</strong> — summarise findings and basis for recommendation.</li>
+  <li>Optionally edit the <strong>Confidentiality Notice</strong>.</li>
+  <li>Click <strong>📄 Generate &amp; Preview Report</strong>. The report opens in a new tab.</li>
+  <li>In the new tab, use <strong>File → Print → Save as PDF</strong> to save the report.</li>
+</ol>
+
+<h3>Approving the Report</h3>
+<ol class="steps">
+  <li>After generating, click <strong>✓ Approve Report (Auditor)</strong> on the report settings page.</li>
+  <li>A confirmation dialog shows your name and asks you to confirm this represents your professional judgement.</li>
+  <li>Click Proceed. The report is marked Auditor Approved with your name and timestamp.</li>
+  <li>Once approved, the Qualification page prerequisites are met.</li>
+</ol>
+
+<!-- ════════════════════════════════════════════════════════ 15. AI TOOLS -->
+<div class="page-break"></div>
+<h2 id="aitools">15. AI Onsite Tools</h2>
+
+<p>All AI tools are accessed from the <strong>Onsite AI Tools</strong> section of the Audit Hub.</p>
+
+<div class="feature-grid">
+  <div class="feature-card">
+    <div class="icon">🎙</div>
+    <div class="name">Voice Recording</div>
+    <div class="desc">Record audit conversations. Transcribed by OpenAI Whisper. Saved as TRANSCRIPT evidence. Requires explicit consent confirmation before recording starts.</div>
+  </div>
+  <div class="feature-card">
+    <div class="icon">🔬</div>
+    <div class="name">Document OCR</div>
+    <div class="desc">Photograph a supplier document. GPT-4o vision extracts content, checks for missing fields, flags concerns, and suggests follow-up questions.</div>
+  </div>
+  <div class="feature-card">
+    <div class="icon">📐</div>
+    <div class="name">Drawing Analysis</div>
+    <div class="desc">Photograph a technical drawing. AI identifies CTF characteristics, GD&amp;T callouts, process risks, and required verification documents.</div>
+  </div>
+  <div class="feature-card">
+    <div class="icon">📋</div>
+    <div class="name">PPAP Review</div>
+    <div class="desc">Structured 18-element PPAP checklist with status tracking, notes, and evidence upload for each element.</div>
+  </div>
+  <div class="feature-card">
+    <div class="icon">🔗</div>
+    <div class="name">Evidence Trace</div>
+    <div class="desc">Vertical traceability chain from drawing characteristic through PFMEA, Control Plan, Work Instruction, MSA, and Inspection Result.</div>
+  </div>
+  <div class="feature-card">
+    <div class="icon">🏅</div>
+    <div class="name">Qualification</div>
+    <div class="desc">Formal APPROVE / CONDITIONAL / REJECT decision page with prerequisites check and confirmation dialog.</div>
+  </div>
+</div>
+
+<div class="notice notice-warning">
+  <strong>Maximum image size for OCR and Drawing Analysis:</strong> 10 MB per photo upload (3 MB after base64 encoding for the AI API). For large drawings, take multiple photos of different sections.
+</div>
+
+<!-- ══════════════════════════════════════════════════════ 16. SUPPLIERS -->
+<h2 id="suppliers">16. Supplier Risk Dashboard</h2>
+
+<p>
+  The Supplier Risk Dashboard (<strong>Suppliers</strong> in the navigation) aggregates all audit data
+  by supplier and displays a risk profile.
+</p>
+
+<h3>Risk Score Calculation</h3>
+<table>
+  <tr><th>Risk Level</th><th>Condition</th></tr>
+  <tr><td style="color:#dc2626;font-weight:700">HIGH</td><td>Any open major findings OR any overdue CARs</td></tr>
+  <tr><td style="color:#d97706;font-weight:700">MEDIUM</td><td>Reserved for future scoring rules</td></tr>
+  <tr><td style="color:#16a34a;font-weight:700">LOW</td><td>No major findings and no overdue CARs</td></tr>
+</table>
+
+<p>
+  Click any supplier card to expand and view the full audit history with dates, audit type, lead auditor,
+  and status. Click <strong>Open →</strong> to go directly to an audit.
+</p>
+
+<!-- ══════════════════════════════════════════════════ 17. MANUFACTURING -->
+<h2 id="manufacturing">17. Manufacturing Knowledge</h2>
+
+<p>
+  The Manufacturing Knowledge page (<strong>Manufacturing</strong> in the navigation) provides
+  process-specific reference information for use during audits.
+</p>
+
+<p>Nine process modules are available:</p>
+
+<table>
+  <tr><th>Process</th><th>Key Focus Areas</th></tr>
+  <tr><td>CNC Machining</td><td>Tool wear, dimensional accuracy, Cpk, CMM verification</td></tr>
+  <tr><td>Sheet Metal Stamping</td><td>Die wear, springback, burr height, material certs</td></tr>
+  <tr><td>Die / Investment Casting</td><td>Porosity (X-ray), alloy certs, process parameters</td></tr>
+  <tr><td>Plastic Injection Moulding</td><td>Material drying, shrinkage, weld lines, regrind control</td></tr>
+  <tr><td>Welding / Fabrication</td><td>WPS/WQR qualification, NDT, filler material traceability</td></tr>
+  <tr><td>Electroplating / Surface Treatment</td><td>Bath chemistry, coating thickness, salt spray, embrittlement bake</td></tr>
+  <tr><td>Painting / Powder Coating</td><td>Pre-treatment control, DFT measurement, adhesion testing</td></tr>
+  <tr><td>Thermal Processing</td><td>TUS/SAT records, AMS 2750, NADCAP, batch traceability</td></tr>
+  <tr><td>Assembly</td><td>Part identity control, torque verification, poka-yoke testing</td></tr>
+</table>
+
+<p>
+  For each process, five information tabs are available: <strong>Key Risks</strong>,
+  <strong>CTF Characteristics</strong>, <strong>Documents to Request</strong>,
+  <strong>Audit Questions</strong>, and <strong>Common Non-Conformances</strong>.
+</p>
+
+<!-- ══════════════════════════════════════════════════════════ 18. AI -->
+<div class="page-break"></div>
+<h2 id="ai">18. AI Features and Controls</h2>
+
+<h3>What AI Can Do</h3>
+<ul>
+  <li>Generate risk-based audit preparation plans</li>
+  <li>Suggest follow-up questions and evidence requests for checklist items</li>
+  <li>Draft finding statements based on auditor notes and verdict</li>
+  <li>Generate end-of-day audit summaries</li>
+  <li>Generate day-by-day agenda and opening meeting notes</li>
+  <li>Extract and analyse content from photographed documents (OCR)</li>
+  <li>Identify CTF characteristics from technical drawing photos</li>
+  <li>Transcribe recorded audio of audit conversations (Whisper)</li>
+</ul>
+
+<h3>What AI Cannot Do — Ever</h3>
+<table>
+  <tr><th>Action</th><th>Why</th></tr>
+  <tr><td>Approve a verification item</td><td><code>isApproved</code> requires explicit auditor checkbox</td></tr>
+  <tr><td>Approve a finding</td><td><code>isAuditorApproved</code> requires explicit auditor button</td></tr>
+  <tr><td>Close a CAR</td><td><code>isAuditorVerifiedClosed</code> requires explicit confirmation dialog</td></tr>
+  <tr><td>Approve the audit report</td><td><code>isAuditorApproved</code> requires explicit auditor button</td></tr>
+  <tr><td>Make a qualification decision</td><td>Decision requires prerequisites + auditor confirmation</td></tr>
+  <tr><td>Accept a PPAP element</td><td>Each element requires explicit auditor confirmation</td></tr>
+  <tr><td>Verify a trace link</td><td>Each link requires explicit auditor confirmation</td></tr>
+</table>
+
+<h3>AI Labelling</h3>
+<p>
+  Every AI-generated output is displayed in an amber box clearly labelled
+  <strong>✦ AI SUGGESTION — NOT AUDITOR APPROVED</strong>. An expandable disclaimer explains
+  the AI's limitations. AI suggestions are never automatically written into any form field.
+</p>
+
+<h3>Models Used</h3>
+<table>
+  <tr><th>Feature</th><th>Model</th></tr>
+  <tr><td>Audit prep, verification guidance, finding suggestion, daily summary, agenda</td><td>GPT-4o-mini</td></tr>
+  <tr><td>Document OCR, Drawing Analysis</td><td>GPT-4o (vision)</td></tr>
+  <tr><td>Voice transcription</td><td>Whisper-1</td></tr>
+</table>
+
+<div class="notice notice-info">
+  <strong>API Key:</strong> AI features require an OpenAI API key set as <code>OPENAI_API_KEY</code>
+  in the Vercel environment variables. Without it, AI buttons show a "not configured" message and
+  the rest of the app works normally.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 19. SETTINGS -->
+<h2 id="settings">19. Settings, Backup and Reset</h2>
+
+<h3>Auditor Preferences</h3>
+<p>Enter your name in Settings → Auditor Preferences. This auto-fills auditor fields on new audits and approvals.</p>
+
+<h3>Scoring Thresholds</h3>
+<p>
+  Set pass/conditional/fail percentage thresholds in Settings → Scoring Thresholds.
+  These are stored in localStorage and used as reference — the qualification decision still requires explicit auditor sign-off.
+</p>
+
+<h3>Exporting a Backup</h3>
+<ol class="steps">
+  <li>Go to Settings → Export Audit (JSON Backup).</li>
+  <li>Select the audit from the dropdown.</li>
+  <li>Click <strong>Export JSON</strong>. A <code>.json</code> file is downloaded to your device.</li>
+</ol>
+<div class="notice notice-warning">
+  Photo and document blobs are NOT included in JSON exports (too large). Only structured data
+  (checklist, responses, verifications, findings, CARs, report) is exported.
+  Re-attach evidence files manually after importing on a new device.
+</div>
+
+<h3>Importing a Backup</h3>
+<ol class="steps">
+  <li>Go to Settings → Import Audit from Backup.</li>
+  <li>Click <strong>Choose Backup File</strong> and select a previously exported <code>.json</code> file.</li>
+  <li>If an audit with the same ID exists, it will be overwritten.</li>
+</ol>
+
+<h3>Factory Reset</h3>
+<p>
+  Settings → Factory Reset permanently deletes ALL data in this browser: audits, checklists, findings, CARs,
+  evidence, and reports. You must type <strong>RESET</strong> in the confirmation prompt to proceed.
+  Export all audits before resetting.
+</p>
+
+<!-- ══════════════════════════════════════════════════════════ 20. STORAGE -->
+<div class="page-break"></div>
+<h2 id="storage">20. Storage and Data</h2>
+
+<table>
+  <tr><th>Storage Location</th><th>What is Stored</th><th>Limit</th></tr>
+  <tr><td>IndexedDB (browser)</td><td>All audit records, checklists, evidence metadata, photo and document blobs</td><td>~50–500 MB depending on browser/device</td></tr>
+  <tr><td>localStorage (browser)</td><td>Auditor name, current audit ID, scoring thresholds, UI preferences only</td><td>~5 MB</td></tr>
+  <tr><td>Vercel server</td><td>Nothing — app is stateless; server only proxies AI API calls</td><td>—</td></tr>
+  <tr><td>OpenAI</td><td>Text prompts processed and discarded; audio processed and discarded</td><td>—</td></tr>
+</table>
+
+<div class="notice notice-warning">
+  <strong>Data loss risk:</strong> Browser data can be lost if you clear browser storage, use private/incognito mode, or switch devices. Always export a JSON backup after completing significant audit work. Photo evidence cannot be recovered from a JSON backup.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 21. SECURITY -->
+<h2 id="security">21. Security and Privacy</h2>
+
+<table>
+  <tr><th>Control</th><th>Implementation</th></tr>
+  <tr><td>OpenAI API key</td><td>Stored in Vercel environment variables only — never sent to the browser</td></tr>
+  <tr><td>AI route</td><td>Server-side only (<code>/api/ai/suggest</code>, <code>/api/ai/transcribe</code>)</td></tr>
+  <tr><td>Input sanitisation</td><td>All context fields truncated and sanitised before AI prompt construction</td></tr>
+  <tr><td>Data at rest</td><td>IndexedDB is not encrypted in prototype — do not store real confidential data</td></tr>
+  <tr><td>HTTPS</td><td>Enforced by Vercel for all connections</td></tr>
+  <tr><td>Security headers</td><td>X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy, Permissions-Policy</td></tr>
+  <tr><td>Camera / microphone</td><td>Permissions-Policy restricts to same-origin only</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════ 22. FAQ -->
+<h2 id="faq">22. Frequently Asked Questions</h2>
+
+<h4>AI features show "not configured" — what do I do?</h4>
+<p>Add your <code>OPENAI_API_KEY</code> in the Vercel dashboard under Environment Variables and redeploy. See the setup guide for step-by-step instructions.</p>
+
+<h4>I cleared my browser data and lost all my audits.</h4>
+<p>IndexedDB data is cleared when you clear browser storage. Always export JSON backups regularly. If you had a backup, restore it via Settings → Import. Photo evidence cannot be recovered.</p>
+
+<h4>Can two people use the app at the same time?</h4>
+<p>Not in the prototype — each user has their own browser storage. Real-time collaboration requires a server-side database (future version).</p>
+
+<h4>The app shows a "Prototype" banner — is this normal?</h4>
+<p>Yes. The banner is a reminder that this is prototype storage only, not a production quality record system. It cannot be dismissed permanently in the current version.</p>
+
+<h4>Can I use the app on my phone without internet?</h4>
+<p>Yes — once the app has loaded, a Service Worker caches the app shell so it works offline. AI features (text suggestions, OCR, transcription) require an internet connection. All audit data entry works offline.</p>
+
+<h4>The Excel import failed — what format does the file need to be?</h4>
+<p>The importer reads the first worksheet. Section rows are detected by having no numeric reference in the first column. Each question row should have: reference, question text, guidance, max score (number or blank), scoring basis (text), mandatory flag (Y or blank). Use the existing checklist template as a reference.</p>
+
+<h4>How do I print the audit report to PDF?</h4>
+<p>From the Report page, click <strong>Generate &amp; Preview Report</strong>. The report opens in a new tab. Use <strong>Ctrl+P</strong> (or Cmd+P on Mac) → change destination to <strong>Save as PDF</strong> → Save.</p>
+
+<h4>How do I print this manual to PDF?</h4>
+<p>Open <code>https://pqe-ai-assistant.vercel.app/manual.html</code> in your browser, then use <strong>Ctrl+P / Cmd+P → Save as PDF</strong>.</p>
+
+<footer>
+  PQE AI Assistant — User Manual — Version 0.2.0 — Prototype Release<br>
+  https://pqe-ai-assistant.vercel.app &nbsp;·&nbsp; https://github.com/wodjr/pqe-ai-assistant<br><br>
+  Made with IBM Bob
+</footer>
+</body>
+</html>
