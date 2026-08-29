@@ -20,6 +20,7 @@ import {
 } from "@/lib/storage/db";
 import { getAuditorName } from "@/lib/storage/localStorage";
 import { nanoid } from "@/lib/utils/nanoid";
+import { getVerificationSuggestion, isAIError } from "@/lib/aiSuggest";
 import type {
   Audit,
   ChecklistTemplate,
@@ -33,6 +34,7 @@ import PageHeader from "@/components/PageHeader";
 import Card from "@/components/Card";
 import StatusBadge from "@/components/StatusBadge";
 import EvidenceUpload from "@/components/EvidenceUpload";
+import AISuggestionBox from "@/components/AISuggestionBox";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Link from "next/link";
 
@@ -63,6 +65,10 @@ export default function AuditorVerificationPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const auditorName = typeof window !== "undefined" ? getAuditorName() : "";
+  // AI suggestions: keyed by questionId
+  const [aiSuggestions, setAiSuggestions] = useState<Map<string, string>>(new Map());
+  const [aiLoading, setAiLoading] = useState<string | null>(null); // questionId loading
+  const [aiErrors, setAiErrors] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     async function load() {
@@ -135,6 +141,26 @@ export default function AuditorVerificationPage() {
   const handleEvidenceAdded = useCallback((ev: Evidence) => {
     setEvidence((prev) => [...prev, ev]);
   }, []);
+
+  async function handleAISuggest(q: ChecklistQuestion) {
+    if (!audit) return;
+    setAiLoading(q.id);
+    setAiErrors((prev) => { const n = new Map(prev); n.delete(q.id); return n; });
+    const supplierResp = supplierMap.get(q.id);
+    const result = await getVerificationSuggestion({
+      questionRef: q.reference,
+      questionText: q.text,
+      guidance: q.guidance,
+      supplierResponse: supplierResp?.response ?? "",
+      supplierStatus: supplierResp?.status ?? "NOT_ASSESSED",
+    });
+    if (isAIError(result)) {
+      setAiErrors((prev) => new Map(prev).set(q.id, result.error));
+    } else {
+      setAiSuggestions((prev) => new Map(prev).set(q.id, result.suggestion));
+    }
+    setAiLoading(null);
+  }
 
   if (loading) return <LoadingSpinner />;
   if (!audit || !checklist)
@@ -244,13 +270,14 @@ export default function AuditorVerificationPage() {
                         </div>
                       )}
 
-                      {/* AI suggestion (if any) */}
-                      {saved?.aiSuggestion && (
-                        <div className="ai-suggestion-block text-xs">
-                          <strong>⚠ AI SUGGESTION — NOT AUDITOR APPROVED:</strong>{" "}
-                          {saved.aiSuggestion}
-                        </div>
-                      )}
+                      {/* AI suggestion */}
+                      <AISuggestionBox
+                        suggestion={aiSuggestions.get(q.id) ?? null}
+                        loading={aiLoading === q.id}
+                        error={aiErrors.get(q.id) ?? null}
+                        onRequest={() => handleAISuggest(q)}
+                        buttonLabel="Get AI Verification Guidance"
+                      />
 
                       {/* Auditor verdict */}
                       <div>

@@ -18,6 +18,7 @@ import {
 import { getAuditorName } from "@/lib/storage/localStorage";
 import { nanoid, generateRef } from "@/lib/utils/nanoid";
 import { formatDateTime } from "@/lib/utils/format";
+import { getFindingSuggestion, isAIError } from "@/lib/aiSuggest";
 import type {
   Audit,
   Finding,
@@ -31,6 +32,7 @@ import StatusBadge from "@/components/StatusBadge";
 import EvidenceUpload from "@/components/EvidenceUpload";
 import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import AISuggestionBox from "@/components/AISuggestionBox";
 import Link from "next/link";
 
 const CLASSIFICATIONS: { value: FindingClass; label: string }[] = [
@@ -61,6 +63,10 @@ function FindingsPageInner() {
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const auditorName = typeof window !== "undefined" ? getAuditorName() : "";
+  // AI suggestion for the new-finding form
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const [form, setForm] = useState<FindingForm>({
     classification: "MINOR",
@@ -91,6 +97,26 @@ function FindingsPageInner() {
     }
     load();
   }, [selectedAuditId]);
+
+  async function handleFindingAISuggest() {
+    if (!audit) return;
+    setAiLoading(true);
+    setAiError(null);
+    const result = await getFindingSuggestion({
+      auditType: audit.auditType,
+      supplierName: audit.supplierName,
+      questionRef: "",
+      questionText: form.title,
+      auditorNotes: form.description,
+      verdict: form.classification,
+    });
+    if (isAIError(result)) {
+      setAiError(result.error);
+    } else {
+      setAiSuggestion(result.suggestion);
+    }
+    setAiLoading(false);
+  }
 
   async function handleCreateFinding(e: React.FormEvent) {
     e.preventDefault();
@@ -146,6 +172,8 @@ function FindingsPageInner() {
 
     setFindings((prev) => [...prev, finding]);
     setForm({ classification: "MINOR", title: "", description: "", requiresCAR: false });
+    setAiSuggestion(null);
+    setAiError(null);
     setShowForm(false);
     setSaving(false);
   }
@@ -271,6 +299,15 @@ function FindingsPageInner() {
                     className="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+
+                {/* AI suggestion */}
+                <AISuggestionBox
+                  suggestion={aiSuggestion}
+                  loading={aiLoading}
+                  error={aiError}
+                  onRequest={handleFindingAISuggest}
+                  buttonLabel="Get AI Finding Suggestion"
+                />
 
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
