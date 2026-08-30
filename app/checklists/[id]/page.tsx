@@ -5,9 +5,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getChecklist } from "@/lib/storage/db";
+import { getChecklistReviewSuggestion, isAIError } from "@/lib/aiSuggest";
 import type { ChecklistTemplate } from "@/types/project";
 import PageHeader from "@/components/PageHeader";
 import Card from "@/components/Card";
+import AISuggestionBox from "@/components/AISuggestionBox";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Link from "next/link";
 
@@ -16,6 +18,9 @@ export default function ChecklistDetailPage() {
   const [checklist, setChecklist] = useState<ChecklistTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     getChecklist(id).then((c) => {
@@ -44,6 +49,31 @@ export default function ChecklistDetailPage() {
   }
   function collapseAll() {
     setExpandedSections(new Set());
+  }
+
+  async function handleAIReview() {
+    if (!checklist) return;
+    setAiLoading(true);
+    setAiError(null);
+    const result = await getChecklistReviewSuggestion({
+      checklistName: checklist.name,
+      revision: checklist.revision,
+      sections: checklist.sections.map((s) => ({
+        title: s.title,
+        questions: s.questions.map((q) => ({
+          ref: q.reference,
+          text: q.text,
+          guidance: q.guidance ?? "",
+          isMandatory: q.isMandatory,
+        })),
+      })),
+    });
+    if (isAIError(result)) {
+      setAiError(result.error);
+    } else {
+      setAiSuggestion(result.suggestion);
+    }
+    setAiLoading(false);
   }
 
   if (loading) return <LoadingSpinner />;
@@ -93,6 +123,22 @@ export default function ChecklistDetailPage() {
             </div>
           ))}
         </dl>
+      </Card>
+
+      {/* AI Review */}
+      <Card title="✦ AI Checklist Review">
+        <p className="text-xs text-slate-500 mb-3">
+          Analyses question coverage, identifies gaps (PFMEA, CTF, MSA, SPC, traceability, etc.),
+          flags un-auditable questions, and suggests improvements. AI suggestions are advisory only
+          — the auditor is responsible for checklist quality and scope decisions.
+        </p>
+        <AISuggestionBox
+          suggestion={aiSuggestion}
+          loading={aiLoading}
+          error={aiError}
+          onRequest={handleAIReview}
+          buttonLabel="✦ Review Checklist Coverage with AI"
+        />
       </Card>
 
       {/* Controls */}

@@ -82,6 +82,12 @@ export interface DailySummaryContext {
   keyNotesSnippets: string[];
 }
 
+export interface ChecklistReviewContext {
+  checklistName: string;
+  revision: string;
+  sections: { title: string; questions: { ref: string; text: string; guidance: string; isMandatory: boolean }[] }[];
+}
+
 export interface DrawingContext {
   supplierName: string;
   partNumber: string;
@@ -101,8 +107,8 @@ export interface OcrContext {
 // ---------------------------------------------------------------------------
 
 async function callAI(
-  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda",
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext
+  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review",
+  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext
 ): Promise<AISuggestionResponse> {
   try {
     const res = await fetch("/api/ai/suggest", {
@@ -157,4 +163,10 @@ export async function getAgendaSuggestion(
   ctx: AgendaContext
 ): Promise<AISuggestionResponse> {
   return callAI("agenda", ctx);
+}
+
+export async function getChecklistReviewSuggestion(
+  ctx: ChecklistReviewContext
+): Promise<AISuggestionResponse> {
+  return callAI("checklist_review", ctx);
 }

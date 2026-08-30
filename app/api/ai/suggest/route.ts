@@ -90,11 +90,17 @@ interface OcrContext {
   imageBase64: string;
 }
 
-type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda";
+interface ChecklistReviewContext {
+  checklistName: string;
+  revision: string;
+  sections: { title: string; questions: { ref: string; text: string; guidance: string; isMandatory: boolean }[] }[];
+}
+
+type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review";
 
 interface SuggestRequest {
   mode: SuggestMode;
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext;
+  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +255,40 @@ Generate:
 Keep the total response under 500 words. Use clear headings and bullet points.`;
 }
 
+function buildChecklistReviewPrompt(ctx: ChecklistReviewContext): string {
+  const sectionsSummary = ctx.sections
+    .map((s) => {
+      const questions = s.questions
+        .slice(0, 15)
+        .map((q) => `  [${q.ref}] ${q.text}${q.isMandatory ? " (MANDATORY)" : ""}${q.guidance ? `\n    Guidance: ${q.guidance}` : ""}`)
+        .join("\n");
+      return `Section: ${s.title} (${s.questions.length} questions)\n${questions}${s.questions.length > 15 ? `\n  … and ${s.questions.length - 15} more questions` : ""}`;
+    })
+    .join("\n\n");
+
+  return `You are a procurement quality engineering expert reviewing an audit checklist template.
+
+Checklist: "${ctx.checklistName}" (Revision ${ctx.revision || "unspecified"})
+
+Sections and questions:
+${sectionsSummary}
+
+Review this checklist and provide:
+
+1. COVERAGE ASSESSMENT — Which quality management areas are well covered and which are missing or thin (e.g. PFMEA linkage, Control Plan, MSA/Gauge R&R, SPC/Cpk, incoming inspection, traceability, change management, sub-tier supplier controls, customer-specific requirements).
+
+2. CTF / CRITICAL CHARACTERISTICS — Does the checklist adequately address Critical-to-Function (CTF) characteristic identification, measurement system capability, and in-process control of CTF features?
+
+3. GAP ANALYSIS — List the top 3-5 specific questions or topics that are missing and should be added, with a brief rationale for each.
+
+4. QUESTION QUALITY ISSUES — Flag any questions that are vague, un-auditable (cannot be objectively verified), or where the guidance is insufficient.
+
+5. OVERALL RATING — Summarise the checklist quality in one paragraph: coverage breadth, auditability, and suitability for its purpose.
+
+Keep the response under 500 words. Use numbered sections and bullet points. Be specific and practical.
+IMPORTANT: Base your review only on the questions shown. Do not invent question references.`;
+}
+
 // ---------------------------------------------------------------------------
 // Truncation helper — prevent prompt injection via oversized inputs
 // ---------------------------------------------------------------------------
@@ -341,6 +381,22 @@ function sanitiseAgenda(ctx: AgendaContext): AgendaContext {
       questionCount: Math.max(0, Math.min(999, Number(s.questionCount) || 0)),
     })),
     previousFindings: truncate(ctx.previousFindings, 400),
+  };
+}
+
+function sanitiseChecklistReview(ctx: ChecklistReviewContext): ChecklistReviewContext {
+  return {
+    checklistName: truncate(ctx.checklistName, 120),
+    revision: truncate(ctx.revision, 20),
+    sections: (ctx.sections ?? []).slice(0, 20).map((s) => ({
+      title: truncate(s.title, 80),
+      questions: (s.questions ?? []).slice(0, 50).map((q) => ({
+        ref: truncate(q.ref, 20),
+        text: truncate(q.text, 200),
+        guidance: truncate(q.guidance, 150),
+        isMandatory: !!q.isMandatory,
+      })),
+    })),
   };
 }
 
@@ -438,6 +494,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const p = buildAgendaPrompt(sanitiseAgenda(body.context as AgendaContext));
         messages = [{ role: "user", content: p }];
         maxTokens = 700;
+        break;
+      }
+      case "checklist_review": {
+        const p = buildChecklistReviewPrompt(sanitiseChecklistReview(body.context as ChecklistReviewContext));
+        messages = [{ role: "user", content: p }];
+        maxTokens = 900;
         break;
       }
       default:
