@@ -230,27 +230,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* User Manual */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">📖</span>
-          <div>
-            <div className="font-semibold text-blue-900 text-sm">User Manual</div>
-            <div className="text-xs text-blue-700 mt-0.5">
-              Step-by-step guide covering all 22 sections of the app — opens in a new tab.
-              Use browser Print → Save as PDF to download.
-            </div>
-          </div>
-        </div>
-        <a
-          href="/manual.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded transition-colors"
-        >
-          Open Manual →
-        </a>
-      </div>
     </div>
   );
 }
