@@ -96,11 +96,33 @@ interface ChecklistReviewContext {
   sections: { title: string; questions: { ref: string; text: string; guidance: string; isMandatory: boolean }[] }[];
 }
 
-type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review";
+interface SupplierReviewContext {
+  supplierName: string;
+  supplierSite: string;
+  checklistName: string;
+  sections: {
+    section: string;
+    questions: {
+      no: string;
+      question: string;
+      answer: string;   // "Y" | "N" | "N/A" | ""
+      comment: string;
+      highlighted: boolean;
+    }[];
+  }[];
+  totalQuestions: number;
+  totalY: number;
+  totalN: number;
+  totalNA: number;
+  totalNoAnswer: number;
+  totalHighlighted: number;
+}
+
+type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review" | "supplier_review";
 
 interface SuggestRequest {
   mode: SuggestMode;
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext;
+  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext | SupplierReviewContext;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +277,55 @@ Generate:
 Keep the total response under 500 words. Use clear headings and bullet points.`;
 }
 
+function buildSupplierReviewPrompt(ctx: SupplierReviewContext): string {
+  // Build a concise summary of all answers grouped by section
+  const sectionBlocks = ctx.sections.map((s) => {
+    const lines = s.questions.map((q) => {
+      const flag = q.highlighted ? " 🟡HIGHLIGHTED" : "";
+      const ans = q.answer || "NO ANSWER";
+      const comment = q.comment ? ` | Comment: "${q.comment}"` : " | No comment";
+      return `  Q${q.no} [${ans}]${flag}${comment}\n  Question: ${q.question}`;
+    }).join("\n");
+    return `SECTION: ${s.section}\n${lines}`;
+  }).join("\n\n");
+
+  return `You are a senior procurement quality engineering expert. An auditor is preparing for an onsite supplier audit at ${ctx.supplierName || "the supplier"} (${ctx.supplierSite || "site unspecified"}).
+
+The supplier has completed the self-assessment checklist "${ctx.checklistName}" and returned it. Below are all their responses.
+
+SUMMARY STATISTICS:
+- Total questions: ${ctx.totalQuestions}
+- Answered Y: ${ctx.totalY}
+- Answered N: ${ctx.totalN}
+- Answered N/A: ${ctx.totalNA}
+- No answer: ${ctx.totalNoAnswer}
+- Highlighted rows: ${ctx.totalHighlighted}
+
+SUPPLIER RESPONSES BY SECTION:
+${sectionBlocks}
+
+Based on the above, provide a structured PRE-AUDIT BRIEFING for the auditor covering:
+
+1. 🔴 HIGH PRIORITY — RISK AREAS
+List every question answered "N" with the section, question number, and the specific onsite follow-up question the auditor should ask. If the supplier left no comment on an N, flag that too.
+
+2. 🟡 MEDIUM PRIORITY — N/A AND HIGHLIGHTED ITEMS
+List all N/A responses and highlighted rows that need verification. For each, explain why the auditor should probe it onsite.
+
+3. ⚪ WEAK OR VAGUE COMMENTS
+Flag any Y answers where the supplier comment is missing, too brief, or generic (e.g. just a document number with no explanation). Suggest what the auditor should request as evidence.
+
+4. 📋 STRATEGIC AUDIT FOCUS
+Even where everything is Y, identify the top 3 sections/areas the auditor should spend the most time on, and for each provide 2–3 specific probing questions to verify the supplier is not just saying Y without evidence.
+
+5. 📄 DOCUMENTS TO REQUEST BEFORE THE AUDIT
+List the specific documents the auditor should request from the supplier in advance based on the responses.
+
+Be specific, practical, and reference actual question numbers and section names from the data above.
+Keep the total response under 700 words. Use the emoji section headings shown above.
+IMPORTANT: Do not invent responses — base everything strictly on the data provided.`;
+}
+
 function buildChecklistReviewPrompt(ctx: ChecklistReviewContext): string {
   const sectionsSummary = ctx.sections
     .map((s) => {
@@ -384,6 +455,30 @@ function sanitiseAgenda(ctx: AgendaContext): AgendaContext {
   };
 }
 
+function sanitiseSupplierReview(ctx: SupplierReviewContext): SupplierReviewContext {
+  return {
+    supplierName: truncate(ctx.supplierName, 100),
+    supplierSite: truncate(ctx.supplierSite, 100),
+    checklistName: truncate(ctx.checklistName, 120),
+    totalQuestions: Math.max(0, Number(ctx.totalQuestions) || 0),
+    totalY: Math.max(0, Number(ctx.totalY) || 0),
+    totalN: Math.max(0, Number(ctx.totalN) || 0),
+    totalNA: Math.max(0, Number(ctx.totalNA) || 0),
+    totalNoAnswer: Math.max(0, Number(ctx.totalNoAnswer) || 0),
+    totalHighlighted: Math.max(0, Number(ctx.totalHighlighted) || 0),
+    sections: (ctx.sections ?? []).slice(0, 20).map((s) => ({
+      section: truncate(s.section, 80),
+      questions: (s.questions ?? []).slice(0, 60).map((q) => ({
+        no: truncate(q.no, 10),
+        question: truncate(q.question, 250),
+        answer: truncate(q.answer, 10),
+        comment: truncate(q.comment, 300),
+        highlighted: !!q.highlighted,
+      })),
+    })),
+  };
+}
+
 function sanitiseChecklistReview(ctx: ChecklistReviewContext): ChecklistReviewContext {
   return {
     checklistName: truncate(ctx.checklistName, 120),
@@ -500,6 +595,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const p = buildChecklistReviewPrompt(sanitiseChecklistReview(body.context as ChecklistReviewContext));
         messages = [{ role: "user", content: p }];
         maxTokens = 900;
+        break;
+      }
+      case "supplier_review": {
+        const p = buildSupplierReviewPrompt(sanitiseSupplierReview(body.context as SupplierReviewContext));
+        messages = [{ role: "user", content: p }];
+        maxTokens = 1200;
         break;
       }
       default:

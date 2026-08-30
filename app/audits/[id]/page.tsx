@@ -18,7 +18,8 @@ import {
 import { setCurrentAuditId } from "@/lib/storage/localStorage";
 import { exportAuditToJson } from "@/lib/exportBackup";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
-import { getAuditPrepSuggestion, getDailySummarySuggestion, getAgendaSuggestion, isAIError } from "@/lib/aiSuggest";
+import { getAuditPrepSuggestion, getDailySummarySuggestion, getAgendaSuggestion, getSupplierReviewSuggestion, isAIError } from "@/lib/aiSuggest";
+import { parseSupplierExcel } from "@/lib/parseSupplierExcel";
 import type { Audit, ChecklistTemplate } from "@/types/project";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
@@ -48,6 +49,14 @@ export default function AuditDetailPage() {
   const [agendaSuggestion, setAgendaSuggestion] = useState<string | null>(null);
   const [agendaLoading, setAgendaLoading] = useState(false);
   const [agendaError, setAgendaError] = useState<string | null>(null);
+  // AI Supplier Response Review
+  const [supplierFile, setSupplierFile] = useState<File | null>(null);
+  const [supplierParsing, setSupplierParsing] = useState(false);
+  const [supplierParseError, setSupplierParseError] = useState<string | null>(null);
+  const [supplierStats, setSupplierStats] = useState<{ total: number; y: number; n: number; na: number; noAnswer: number; highlighted: number } | null>(null);
+  const [supplierReviewSuggestion, setSupplierReviewSuggestion] = useState<string | null>(null);
+  const [supplierReviewLoading, setSupplierReviewLoading] = useState(false);
+  const [supplierReviewError, setSupplierReviewError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -175,6 +184,69 @@ export default function AuditDetailPage() {
     setDailyLoading(false);
   }
 
+  async function handleSupplierFileUpload(file: File) {
+    setSupplierFile(file);
+    setSupplierParsing(true);
+    setSupplierParseError(null);
+    setSupplierStats(null);
+    setSupplierReviewSuggestion(null);
+    setSupplierReviewError(null);
+    try {
+      const parsed = await parseSupplierExcel(file);
+      const total = parsed.rows.length;
+      const y = parsed.rows.filter((r) => r.answer === "Y").length;
+      const n = parsed.rows.filter((r) => r.answer === "N").length;
+      const na = parsed.rows.filter((r) => r.answer === "N/A").length;
+      const noAnswer = parsed.rows.filter((r) => r.answer === "").length;
+      const highlighted = parsed.rows.filter((r) => r.highlighted).length;
+      setSupplierStats({ total, y, n, na, noAnswer, highlighted });
+
+      // Group rows by section for the AI context
+      const sectionMap = new Map<string, typeof parsed.rows>();
+      for (const row of parsed.rows) {
+        const existing = sectionMap.get(row.section) ?? [];
+        existing.push(row);
+        sectionMap.set(row.section, existing);
+      }
+      const sections = Array.from(sectionMap.entries()).map(([section, rows]) => ({
+        section,
+        questions: rows.map((r) => ({
+          no: r.questionNo,
+          question: r.questionText,
+          answer: r.answer,
+          comment: r.comment,
+          highlighted: r.highlighted,
+        })),
+      }));
+
+      setSupplierParsing(false);
+
+      // Auto-trigger AI review
+      setSupplierReviewLoading(true);
+      const result = await getSupplierReviewSuggestion({
+        supplierName: audit?.supplierName ?? "",
+        supplierSite: audit?.supplierSite ?? "",
+        checklistName: file.name.replace(/\.xlsx?$/i, ""),
+        sections,
+        totalQuestions: total,
+        totalY: y,
+        totalN: n,
+        totalNA: na,
+        totalNoAnswer: noAnswer,
+        totalHighlighted: highlighted,
+      });
+      if (isAIError(result)) {
+        setSupplierReviewError(result.error);
+      } else {
+        setSupplierReviewSuggestion(result.suggestion);
+      }
+      setSupplierReviewLoading(false);
+    } catch (e) {
+      setSupplierParseError(e instanceof Error ? e.message : "Failed to parse Excel file. Check the file format.");
+      setSupplierParsing(false);
+    }
+  }
+
   const workflowSteps = [
     { label: "Supplier Self-Assessment", href: `/audits/${id}/supplier`, description: `${stats.responses} responses recorded`, icon: "📝" },
     { label: "Auditor Verification", href: `/audits/${id}/verify`, description: `${stats.verified} items verified`, icon: "✅" },
@@ -285,6 +357,86 @@ export default function AuditDetailPage() {
           ))}
         </div>
       </div>
+
+      {/* ── AI Supplier Response Review ────────────────────────────────── */}
+      <Card title="✦ AI Pre-Audit Briefing — Supplier Response Review">
+        <p className="text-xs text-slate-500 mb-3">
+          Upload the completed supplier self-assessment Excel. The AI reads every answer across
+          all tabs — flags every N and N/A, reviews comments, highlights highlighted rows, and
+          produces a prioritised pre-audit briefing with specific questions to ask onsite.
+        </p>
+
+        {/* Upload button */}
+        {!supplierFile && !supplierParsing && (
+          <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded">
+            📂 Upload Supplier-Completed Checklist (.xlsx)
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleSupplierFileUpload(f);
+                if (e.target) e.target.value = "";
+              }}
+            />
+          </label>
+        )}
+
+        {/* Parsing spinner */}
+        {supplierParsing && (
+          <div className="flex items-center gap-2 text-sm text-blue-700">
+            <span className="inline-block w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            Reading Excel file…
+          </div>
+        )}
+
+        {/* Parse error */}
+        {supplierParseError && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3">
+            ❌ {supplierParseError}
+            <button type="button" onClick={() => { setSupplierFile(null); setSupplierParseError(null); }} className="ml-2 underline text-xs">Try again</button>
+          </div>
+        )}
+
+        {/* Stats strip after parsing */}
+        {supplierStats && supplierFile && (
+          <div className="mb-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-600 font-medium">📄 {supplierFile.name}</p>
+              <button type="button" onClick={() => { setSupplierFile(null); setSupplierStats(null); setSupplierReviewSuggestion(null); setSupplierReviewError(null); }} className="text-xs text-slate-400 hover:text-slate-600 underline">Clear</button>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-xs">
+              {[
+                { label: "Total Q", value: supplierStats.total, colour: "text-slate-700" },
+                { label: "✅ Y", value: supplierStats.y, colour: "text-green-600" },
+                { label: "🔴 N", value: supplierStats.n, colour: supplierStats.n > 0 ? "text-red-600 font-bold" : "text-slate-400" },
+                { label: "⚫ N/A", value: supplierStats.na, colour: supplierStats.na > 0 ? "text-slate-600 font-bold" : "text-slate-400" },
+                { label: "⬜ No Ans", value: supplierStats.noAnswer, colour: supplierStats.noAnswer > 0 ? "text-amber-600 font-bold" : "text-slate-400" },
+                { label: "🟡 Flagged", value: supplierStats.highlighted, colour: supplierStats.highlighted > 0 ? "text-amber-600 font-bold" : "text-slate-400" },
+              ].map((s) => (
+                <div key={s.label} className="bg-slate-50 border border-slate-200 rounded p-2">
+                  <div className={`text-lg font-bold ${s.colour}`}>{s.value}</div>
+                  <div className="text-slate-500 text-xs">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AI Briefing result */}
+        {supplierStats && (
+          <AISuggestionBox
+            suggestion={supplierReviewSuggestion}
+            loading={supplierReviewLoading}
+            error={supplierReviewError}
+            onRequest={() => {
+              if (supplierFile) handleSupplierFileUpload(supplierFile);
+            }}
+            buttonLabel="✦ Generate Pre-Audit Briefing"
+          />
+        )}
+      </Card>
 
       {/* AI Audit Preparation */}
       <Card title="✦ AI Audit Preparation">

@@ -82,6 +82,28 @@ export interface DailySummaryContext {
   keyNotesSnippets: string[];
 }
 
+export interface SupplierReviewContext {
+  supplierName: string;
+  supplierSite: string;
+  checklistName: string;
+  sections: {
+    section: string;
+    questions: {
+      no: string;
+      question: string;
+      answer: string;
+      comment: string;
+      highlighted: boolean;
+    }[];
+  }[];
+  totalQuestions: number;
+  totalY: number;
+  totalN: number;
+  totalNA: number;
+  totalNoAnswer: number;
+  totalHighlighted: number;
+}
+
 export interface ChecklistReviewContext {
   checklistName: string;
   revision: string;
@@ -107,8 +129,8 @@ export interface OcrContext {
 // ---------------------------------------------------------------------------
 
 async function callAI(
-  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review",
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext
+  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review" | "supplier_review",
+  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext | SupplierReviewContext
 ): Promise<AISuggestionResponse> {
   try {
     const res = await fetch("/api/ai/suggest", {
@@ -163,6 +185,12 @@ export async function getAgendaSuggestion(
   ctx: AgendaContext
 ): Promise<AISuggestionResponse> {
   return callAI("agenda", ctx);
+}
+
+export async function getSupplierReviewSuggestion(
+  ctx: SupplierReviewContext
+): Promise<AISuggestionResponse> {
+  return callAI("supplier_review", ctx);
 }
 
 export async function getChecklistReviewSuggestion(
