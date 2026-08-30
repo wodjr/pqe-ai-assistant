@@ -153,6 +153,7 @@ function CARsPageInner() {
       {/* Audit selector */}
       <Card title="Select Audit">
         <select
+          aria-label="Select audit"
           value={selectedAuditId}
           onChange={(e) => setSelectedAuditId(e.target.value)}
           className="w-full max-w-sm border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -167,7 +168,7 @@ function CARsPageInner() {
       {selectedAuditId && audit && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 stats-strip-2col gap-4">
             <Card className="text-center">
               <div className="text-3xl font-bold text-red-600">{openCount}</div>
               <div className="text-xs text-slate-500 mt-1">Open</div>

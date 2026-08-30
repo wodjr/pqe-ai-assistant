@@ -1,6 +1,6 @@
 # TODO.md — PQE AI Assistant
 
-## Status: Active Development — Phase 3 Features In Progress
+## Status: Phase 4 Quality Polish Complete — Ready for Deployment
 
 ---
 
@@ -42,33 +42,37 @@
 
 ---
 
-## 🔄 Phase 3: Extended Features — In Progress
+## ✅ Phase 3: Extended Features — COMPLETE
 
-- [ ] Daily audit summary AI generation (Audit Hub)
-- [ ] Supplier risk dashboard (`/suppliers`)
-- [ ] Voice recording + Whisper transcription (`/audits/[id]/voice`)
-- [ ] OCR document analysis — photo → GPT-4o vision (`/audits/[id]/ocr`)
-- [ ] Technical drawing analysis — balloon CTF identification (`/audits/[id]/drawing`)
-- [ ] Audit history per supplier (Supplier risk dashboard)
-- [ ] Multilingual supplier self-assessment form (language toggle on `/audits/[id]/supplier`)
-- [ ] Offline mode — Service Worker + background sync manifest
+- [x] Daily audit summary AI generation (Audit Hub)
+- [x] AI Audit Agenda + Opening Notes generation (Audit Hub)
+- [x] Supplier risk dashboard (`/suppliers`)
+- [x] Voice recording + Whisper transcription (`/audits/[id]/voice`)
+- [x] OCR document analysis — photo → GPT-4o vision (`/audits/[id]/ocr`)
+- [x] Technical drawing analysis — balloon CTF identification (`/audits/[id]/drawing`)
+- [x] Audit history per supplier (Supplier risk dashboard — expand card)
+- [x] Multilingual supplier self-assessment form (language toggle on `/audits/[id]/supplier`)
+- [x] Offline mode — Service Worker (`public/sw.js`) + registration in `app/layout.tsx`
+- [x] PPAP evidence review (`/audits/[id]/ppap`)
+- [x] Vertical evidence trace — CTF traceability chain (`/audits/[id]/trace`)
+- [x] Supplier qualification decision (`/audits/[id]/qualification`)
+- [x] Manufacturing knowledge modules (`/manufacturing`)
 
 ---
 
-## 🔄 Phase 4: Quality & Polish
+## ✅ Phase 4: Quality & Polish — COMPLETE
 
-- [ ] Mobile layout pass at 375px
-- [ ] Accessibility audit (labels, contrast, keyboard nav)
-- [ ] Update NavBar with new Phase 3 pages
-- [ ] `npm run build` clean pass after all Phase 3 changes
-- [ ] Push to GitHub
+- [x] Mobile layout pass at ≤480px — grid stacking, badge scaling, title shrink
+- [x] Accessibility — visible focus rings, aria-labels on icon buttons and selects, breadcrumb nav, skip-link
+- [x] NavBar updated with all Phase 3 pages (Suppliers, Manufacturing)
+- [x] `npm run build` clean pass — zero errors, zero warnings
+- [x] Footer updated to v0.3.0
 
 ---
 
 ## 🔄 Phase 5: Deployment
 
-- [ ] `vercel.json` config
-- [ ] Deploy to Vercel
+- [ ] Deploy to Vercel (`vercel.json` already present)
 - [ ] Set `OPENAI_API_KEY` environment variable in Vercel dashboard
 - [ ] Test production URL on mobile and desktop
 

@@ -4,18 +4,46 @@ All notable changes to this project are documented here.
 
 ---
 
-## [Unreleased] — Phase 3 Features
+## [0.3.0] — Phase 3 + Phase 4 Polish — 2025
 
-### In Progress
-- Daily audit summary AI generation
-- Supplier risk dashboard (`/suppliers`)
-- Voice recording + OpenAI Whisper transcription
-- OCR document analysis (photo → GPT-4o vision)
-- Technical drawing CTF analysis
-- Multilingual supplier self-assessment toggle
-- Offline Service Worker
+### Added
+- **Daily audit summary** AI generation on Audit Hub — end-of-day narrative from live audit stats
+- **AI Audit Agenda & Opening Notes** — day-by-day agenda, risk focus, pre-arrival document requests
+- **Supplier Risk Dashboard** (`/suppliers`) — aggregated risk profile, finding counts, open CARs,
+  overdue CARs, and expandable audit history per supplier
+- **Voice Recording + Whisper Transcription** (`/audits/[id]/voice`)
+  - MediaRecorder API with explicit consent gate
+  - Secure server-side Whisper route (`/api/ai/transcribe`)
+  - Transcripts saved as `TRANSCRIPT` evidence in IndexedDB
+- **OCR Document Analysis** (`/audits/[id]/ocr`)
+  - Camera capture or file upload (≤10 MB)
+  - GPT-4o vision analysis via secure server route
+  - Document types: Material Certificate, CoC, FAI, Dimensional Report, Calibration Record, etc.
+- **Technical Drawing Analysis** (`/audits/[id]/drawing`)
+  - GPT-4o vision identifies CTF characteristics, GD&T callouts, and required evidence
+  - Process-type context (CNC, Casting, Stamping, Welding, …)
+- **PPAP Evidence Review** (`/audits/[id]/ppap`) — 18 PPAP elements, per-element status + evidence
+- **Vertical Evidence Trace** (`/audits/[id]/trace`) — CTF chain: Drawing → PFMEA → Control Plan
+  → Work Instruction → Measurement System → Inspection Result
+- **Supplier Qualification Decision** (`/audits/[id]/qualification`) — formal APPROVE /
+  CONDITIONAL / REJECT with required auditor sign-off; AI cannot make or change this decision
+- **Manufacturing Knowledge Modules** (`/manufacturing`) — CNC, Stamping, Casting, Injection
+  Moulding, Welding, Plating, Painting, Heat Treatment, Assembly, Testing reference guides
+- **Multilingual supplier self-assessment** — EN / ES / DE / FR / ZH language toggle
+- **Offline Service Worker** (`public/sw.js`) — app-shell cache-first strategy; API routes
+  always network-first; registered in `app/layout.tsx`
+
+### Phase 4 Quality & Polish
+- Mobile layout: `@media (max-width: 480px)` breakpoint stacks 2/3/4-column grids to single
+  column; stats strips use 2-column override class; badge and title scaling
+- Accessibility: `aria-label` added to icon-only buttons (date remove, dismiss banner, evidence
+  remove) and unlabelled `<select>` elements; breadcrumb `<nav aria-label="Breadcrumb">`;
+  skip-link; visible focus rings on all interactive elements; `button:disabled` opacity
+- Footer version bumped to `v0.3.0`
+- `npm run build` passes clean — zero TypeScript errors, zero ESLint warnings
 
 ---
+
 
 ## [0.2.0] — Phase 2 AI — 2025-01-31 (commit `b063c68`)
 

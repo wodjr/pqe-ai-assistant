@@ -211,7 +211,7 @@ export default function NewAuditPage() {
                     className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   {form.auditDates.length > 1 && (
-                    <button type="button" onClick={() => removeDate(i)} className="text-red-500 text-sm hover:text-red-700">✕</button>
+                    <button type="button" onClick={() => removeDate(i)} aria-label={`Remove date ${i + 1}`} className="text-red-500 text-sm hover:text-red-700">✕</button>
                   )}
                 </div>
               ))}

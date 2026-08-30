@@ -83,7 +83,7 @@ body {
 }
 
 /* ─── Mobile layout fixes ───────────────────────────────────────────────── */
-@media (max-width: 375px) {
+@media (max-width: 480px) {
   /* Ensure tables scroll horizontally on small screens */
   table {
     font-size: 12px;
@@ -93,9 +93,15 @@ body {
     font-size: 10px;
     padding: 1px 6px;
   }
-  /* Stack grid items on very small screens */
-  .grid-cols-2 {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
+  /* Stack 2-, 3- and 4-column grids down to a single column */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+  /* Keep quick-stat strips as 2 columns instead of 1 on very small screens */
+  .stats-strip-2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
   /* Prevent button overflow in flex rows */
   .flex-wrap {
@@ -107,6 +113,10 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* Shrink page titles on very small screens */
+  h1.text-2xl {
+    font-size: 1.25rem;
   }
 }
 

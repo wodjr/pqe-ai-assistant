@@ -221,6 +221,7 @@ function FindingsPageInner() {
       {/* Audit selector */}
       <Card title="Select Audit">
         <select
+          aria-label="Select audit"
           value={selectedAuditId}
           onChange={(e) => setSelectedAuditId(e.target.value)}
           className="w-full max-w-sm border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -235,7 +236,7 @@ function FindingsPageInner() {
       {selectedAuditId && audit && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 stats-strip-2col gap-4">
             {[
               { label: "Major", value: majorCount, colour: "text-red-600" },
               { label: "Minor", value: minorCount, colour: "text-amber-600" },

@@ -166,7 +166,7 @@ export default function SuppliersPage() {
                 </button>
 
                 {/* Quick stats strip */}
-                <div className="border-t border-slate-100 grid grid-cols-4 divide-x divide-slate-100 text-center text-xs">
+                <div className="border-t border-slate-100 grid grid-cols-4 stats-strip-2col divide-x divide-slate-100 text-center text-xs">
                   {[
                     { label: "Major",   value: p.totalMajor,       colour: p.totalMajor > 0 ? "text-red-600 font-bold" : "text-slate-500" },
                     { label: "Minor",   value: p.totalMinor,       colour: p.totalMinor > 0 ? "text-amber-600 font-bold" : "text-slate-500" },
