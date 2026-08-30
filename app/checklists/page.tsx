@@ -79,6 +79,10 @@ export default function ChecklistsPage() {
       {/* Import card */}
       <Card title="Import New Checklist">
         <div className="space-y-3 max-w-lg">
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-800">
+            <strong>📋 This is the blank IBM checklist template</strong> — the standard questionnaire you send <em>to</em> the supplier before the audit.
+            Import it once here and it becomes available for all audits. You do <strong>not</strong> upload the supplier's completed responses here.
+          </div>
           <p className="text-sm text-slate-600">
             Upload an existing <strong>.xlsx</strong> audit questionnaire. The original workbook is
             preserved as a read-only source file. Columns A–F are parsed: Reference, Question,

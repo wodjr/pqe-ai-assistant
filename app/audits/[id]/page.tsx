@@ -360,10 +360,14 @@ export default function AuditDetailPage() {
 
       {/* ── AI Supplier Response Review ────────────────────────────────── */}
       <Card title="✦ AI Pre-Audit Briefing — Supplier Response Review">
+        <div className="bg-green-50 border border-green-200 rounded p-3 text-xs text-green-800 mb-3">
+          <strong>📩 This is where you upload the supplier's completed Excel</strong> — the filled-in checklist the supplier emailed back to you with their Y/N/NA answers and comments.
+          This is <strong>different</strong> from the blank template imported in Checklists. Upload it here once per audit to get the AI briefing below.
+        </div>
         <p className="text-xs text-slate-500 mb-3">
-          Upload the completed supplier self-assessment Excel. The AI reads every answer across
-          all tabs — flags every N and N/A, reviews comments, highlights highlighted rows, and
-          produces a prioritised pre-audit briefing with specific questions to ask onsite.
+          The AI reads every answer across all tabs — flags every N and N/A, reviews comments,
+          highlights highlighted rows, and produces a prioritised pre-audit briefing with specific
+          questions to ask onsite.
         </p>
 
         {/* Upload button */}
