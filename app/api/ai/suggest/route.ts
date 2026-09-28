@@ -60,6 +60,7 @@ interface AgendaContext {
   auditTeam: string[];
   checklistSections: { title: string; questionCount: number }[];
   previousFindings: string;
+  draftAgenda?: string;
 }
 
 interface DailySummaryContext {
@@ -118,11 +119,19 @@ interface SupplierReviewContext {
   totalHighlighted: number;
 }
 
-type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review" | "supplier_review";
+interface PpapReviewContext {
+  supplierName: string;
+  partNumber: string;
+  fileName: string;
+  /** Raw text extracted from all worksheets — max 4000 chars after truncation */
+  extractedText: string;
+}
+
+type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review" | "supplier_review" | "ppap_review";
 
 interface SuggestRequest {
   mode: SuggestMode;
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext | SupplierReviewContext;
+  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext | SupplierReviewContext | PpapReviewContext;
 }
 
 // ---------------------------------------------------------------------------
@@ -254,27 +263,42 @@ function buildAgendaPrompt(ctx: AgendaContext): string {
     .map((s) => `- ${s.title} (${s.questionCount} questions)`)
     .join("\n");
   const team = ctx.auditTeam.length > 0 ? ctx.auditTeam.join(", ") : "Not specified";
-  return `You are a procurement quality engineering expert. Generate a professional supplier audit agenda and opening briefing notes.
+  const totalDays = ctx.auditDates.length || 1;
+
+  const draftBlock = ctx.draftAgenda
+    ? `\nAUDITOR'S DRAFT AGENDA (uploaded by the auditor — use this as the basis):\n---\n${ctx.draftAgenda}\n---\n`
+    : "";
+
+  const instruction = ctx.draftAgenda
+    ? `The auditor has provided a draft agenda above. Your job is to:
+1. Refine and expand the draft into a polished day-by-day schedule with specific time slots (08:00–17:00) for each of the ${totalDays} audit day(s), distributing the checklist sections across the available time
+2. Identify any checklist sections or risk areas NOT covered in the draft and flag them as gaps the auditor should add
+3. Add an opening meeting slot (Day 1, 08:00–09:00) and a closing meeting slot (final day, 16:00–17:00) if not already present
+4. List the top 3 audit-type-specific risk focus areas to investigate during the schedule
+5. List the key documents to request from the supplier before arrival
+
+Keep the total response under 600 words. Use clear day headings, time slots, and bullet points.`
+    : `Generate:
+1. A structured day-by-day agenda with time slots (08:00–17:00) allocating time across all ${totalDays} audit day(s) for each checklist section
+2. Opening meeting briefing notes (Day 1, 08:00–09:00): purpose, scope, logistics, housekeeping
+3. Three supplier-specific risk areas to focus on based on the audit type and scope
+4. A list of requested documents to prepare before arrival
+
+Keep the total response under 600 words. Use clear day headings, time slots, and bullet points.`;
+
+  return `You are a procurement quality engineering expert. Generate a professional supplier audit schedule and opening briefing notes.
 
 Supplier: ${ctx.supplierName}, ${ctx.supplierSite}
 Audit type: ${ctx.auditType}
-Audit dates: ${ctx.auditDates.join(", ")}
+Audit dates: ${ctx.auditDates.join(", ")} (${totalDays} day${totalDays !== 1 ? "s" : ""})
 Lead auditor: ${ctx.leadAuditor}
 Audit team: ${team}
 Scope: ${ctx.scope || "Not specified"}
 
-Checklist sections:
+Checklist sections to cover:
 ${sections}
-
-${ctx.previousFindings ? `Previous findings to address:\n${ctx.previousFindings}\n` : ""}
-
-Generate:
-1. A structured day-by-day agenda with time slots (morning/afternoon) allocating time to each checklist section
-2. Opening meeting briefing notes (purpose, scope, logistics, housekeeping)
-3. Three supplier-specific risk areas to focus on based on the audit type and scope
-4. A list of requested documents to prepare before arrival
-
-Keep the total response under 500 words. Use clear headings and bullet points.`;
+${ctx.previousFindings ? `\nPrevious findings to address:\n${ctx.previousFindings}\n` : ""}${draftBlock}
+${instruction}`;
 }
 
 function buildSupplierReviewPrompt(ctx: SupplierReviewContext): string {
@@ -452,6 +476,7 @@ function sanitiseAgenda(ctx: AgendaContext): AgendaContext {
       questionCount: Math.max(0, Math.min(999, Number(s.questionCount) || 0)),
     })),
     previousFindings: truncate(ctx.previousFindings, 400),
+    draftAgenda: truncate(ctx.draftAgenda, 2000),
   };
 }
 
@@ -492,6 +517,80 @@ function sanitiseChecklistReview(ctx: ChecklistReviewContext): ChecklistReviewCo
         isMandatory: !!q.isMandatory,
       })),
     })),
+  };
+}
+
+function buildPpapReviewPrompt(ctx: PpapReviewContext): string {
+  return `You are a senior procurement quality engineering expert reviewing a PPAP (Production Part Approval Process) submission from a supplier.
+
+Supplier: ${ctx.supplierName}
+Part number / file: ${ctx.partNumber} (${ctx.fileName})
+
+IMPORTANT LANGUAGE NOTE: This submission may contain content in Chinese (Traditional or Simplified), English, or a mix of both. You must read and evaluate ALL content regardless of language. Chinese text is valid PPAP evidence. Do not mark an element as MISSING simply because its content is in Chinese — assess the substance of the content.
+
+Chinese PPAP document name reference (for matching sheet names and content):
+- 製程流程圖 / 流程圖 = Process Flow Diagram (Element 5)
+- 管制計劃 / 控制計劃 = Control Plan (Element 7)
+- 失效模式 / PFMEA / FMEA = Process FMEA (Element 6)
+- 設計失效 / DFMEA = Design FMEA (Element 4)
+- 量測系統 / MSA / Gage R&R / 量具 = MSA / Gage R&R (Element 8)
+- 尺寸 / 量測結果 / 外觀 = Dimensional Results (Element 9)
+- 材料 / 材質 / 測試報告 = Material/Performance Test Results (Element 10)
+- 製程能力 / Cpk / SPC = Initial Process Studies (Element 11)
+- PSW / 零件提交保證書 = Part Submission Warrant (Element 18)
+- 外觀核准 / AAR = Appearance Approval Report (Element 13)
+- 樣品 = Sample Production Parts (Element 14)
+
+The following text was extracted from all worksheets in the supplier's PPAP Excel submission:
+---
+${ctx.extractedText}
+---
+
+Review this PPAP submission against all 18 standard PPAP elements and provide a structured report:
+
+ELEMENT REVIEW — For each of the 18 elements, state one of:
+✅ OK — Evidence found and appears complete
+⚠️ GAP — Evidence present but incomplete, unclear, or suspect
+❌ MISSING — No evidence found for this element
+➖ N/R — Not required (only if submission explicitly states this)
+
+When identifying evidence, check BOTH the worksheet name AND its content. A sheet named in Chinese that contains the relevant data counts as evidence.
+
+Elements to assess:
+1. Design Records  2. Authorised Engineering Change  3. Customer Engineering Approval
+4. Design FMEA  5. Process Flow Diagram  6. Process FMEA  7. Control Plan
+8. MSA / Gage R&R  9. Dimensional Results  10. Material/Performance Test Results
+11. Initial Process Studies (SPC/Cpk)  12. Qualified Laboratory Documentation
+13. Appearance Approval Report  14. Sample Production Parts  15. Master Sample
+16. Checking Aids  17. Customer-Specific Requirements  18. Part Submission Warrant (PSW)
+
+After listing each element status, provide:
+
+CPK / CAPABILITY SUMMARY
+List any Cpk values found. Flag any value below 1.67 for CTF characteristics (critical) or below 1.33 (concern).
+
+DIMENSIONAL RESULTS
+Note any out-of-tolerance values, missing balloon references, or incomplete inspection data.
+
+PSW STATUS
+State clearly: signed / unsigned / missing / partial.
+
+OVERALL RISK RATING
+One of: 🟢 GREEN — Submission appears complete | 🟡 AMBER — Gaps found, request clarification before approval | 🔴 RED — Critical elements missing, reject and return
+
+AUDITOR ACTION ITEMS
+List 3–5 specific items the auditor must verify or request before accepting this PPAP.
+
+Keep total response under 750 words. Be specific and reference actual sheet names and content from the extracted text.
+IMPORTANT: Base findings only on the text provided. Do not invent data. Chinese content is valid evidence.`;
+}
+
+function sanitisePpapReview(ctx: PpapReviewContext): PpapReviewContext {
+  return {
+    supplierName: truncate(ctx.supplierName, 100),
+    partNumber: truncate(ctx.partNumber, 100),
+    fileName: truncate(ctx.fileName, 120),
+    extractedText: truncate(ctx.extractedText, 4000),
   };
 }
 
@@ -588,7 +687,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case "agenda": {
         const p = buildAgendaPrompt(sanitiseAgenda(body.context as AgendaContext));
         messages = [{ role: "user", content: p }];
-        maxTokens = 700;
+        maxTokens = 900;
         break;
       }
       case "checklist_review": {
@@ -601,6 +700,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const p = buildSupplierReviewPrompt(sanitiseSupplierReview(body.context as SupplierReviewContext));
         messages = [{ role: "user", content: p }];
         maxTokens = 1200;
+        break;
+      }
+      case "ppap_review": {
+        const p = buildPpapReviewPrompt(sanitisePpapReview(body.context as PpapReviewContext));
+        messages = [{ role: "user", content: p }];
+        maxTokens = 1100;
         break;
       }
       default:

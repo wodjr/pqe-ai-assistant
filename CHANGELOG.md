@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 
 ---
 
+## [0.4.0] — Mobile Field Use + Agenda AI — 2025
+
+### Added
+- **ZIP export with photos** (`lib/exportBackup.ts`) — `exportAuditToZip()` packages the full audit JSON + every photo and document blob into a single `.zip` file for phone → Mac transfer via AirDrop, iCloud Drive, or USB
+- **ZIP import with photos** (`lib/exportBackup.ts`) — `importAuditFromZip()` reads the zip, restores all structured records, and writes every blob back into IndexedDB by blobKey matching; returns count of photos restored
+- **Settings page** (`app/settings/page.tsx`) — Export and Import cards redesigned with ZIP (recommended, blue highlight) and JSON-only (secondary) options side by side
+- **Draft agenda upload** (`app/audits/[id]/page.tsx`) — Auditor can upload a `.txt` or `.docx` draft agenda in the "AI Audit Agenda" card on the Audit Hub before the audit starts; `.docx` text is extracted client-side from `w:t` XML elements
+- **AI agenda refinement mode** (`app/api/ai/suggest/route.ts`) — When a draft is present, the AI refines and polishes it: adds explicit 08:00–17:00 time slots, distributes all checklist sections, flags missed areas, and ensures opening/closing meeting slots exist. Without a draft the AI generates a full agenda from scratch. `maxTokens` raised from 700 → 900
+- `jszip` 3.10.1 dependency added
+
+### Changed
+- `AgendaContext` in `lib/aiSuggest.ts` and server route extended with optional `draftAgenda?: string` field
+- `sanitiseAgenda` truncates `draftAgenda` to 2000 chars before sending to AI
+
+---
+
 ## [0.3.0] — Phase 3 + Phase 4 Polish — 2025
 
 ### Added

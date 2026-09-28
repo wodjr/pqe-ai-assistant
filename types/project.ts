@@ -278,6 +278,51 @@ export interface AuditReport {
 // Storage export package (for backup / restore)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// PPAP Part Submission Review
+// ---------------------------------------------------------------------------
+
+export type PpapElementRisk = "OK" | "GAP" | "MISSING" | "NOT_REVIEWED";
+
+export interface PpapElementResult {
+  elementId: string;   // "1"–"18"
+  title: string;
+  risk: PpapElementRisk;
+  note: string;        // AI observation for this element
+}
+
+export type PpapPartRisk = "GREEN" | "AMBER" | "RED";
+
+export interface PpapPartReview {
+  id: string;
+  auditId: string;
+  partNumber: string;    // derived from filename or first sheet
+  fileName: string;
+  uploadedAt: string;    // ISO-8601
+  /** Raw text extracted from all worksheets — sent to AI */
+  extractedText: string;
+  /** AI narrative review — full suggestion text */
+  aiSuggestion: string | null;
+  aiGeneratedAt: string | null;
+  /** Per-element structured results parsed from AI response */
+  elementResults: PpapElementResult[];
+  /** Overall risk colour */
+  overallRisk: PpapPartRisk;
+  /** Cpk values spotted by AI */
+  cpkValues: string;
+  /** PSW status spotted by AI */
+  pswStatus: string;
+  /** Auditor final decision — must be set by explicit action */
+  auditorDecision: "PENDING" | "ACCEPTED" | "REJECTED";
+  auditorNotes: string;
+  decidedAt: string | null;
+  decidedBy: string;
+}
+
+// ---------------------------------------------------------------------------
+// Storage export package (for backup / restore)
+// ---------------------------------------------------------------------------
+
 export interface AuditExportPackage {
   exportedAt: string;
   appVersion: string;
@@ -290,6 +335,7 @@ export interface AuditExportPackage {
   findings: Finding[];
   cars: CAR[];
   report: AuditReport | null;
+  ppapReviews: PpapPartReview[];
 }
 
 // ---------------------------------------------------------------------------

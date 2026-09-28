@@ -5,7 +5,7 @@
 import { useState, useRef } from "react";
 import { listAudits, factoryReset } from "@/lib/storage/db";
 import { clearAllPreferences, getAuditorName, setAuditorName } from "@/lib/storage/localStorage";
-import { exportAuditToJson, importAuditFromJson } from "@/lib/exportBackup";
+import { exportAuditToJson, importAuditFromJson, exportAuditToZip, importAuditFromZip } from "@/lib/exportBackup";
 import type { Audit } from "@/types/project";
 import PageHeader from "@/components/PageHeader";
 import Card from "@/components/Card";
@@ -17,6 +17,8 @@ export default function SettingsPage() {
   const [exportAuditId, setExportAuditId] = useState("");
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const importZipRef = useRef<HTMLInputElement>(null);
+  const [zipExporting, setZipExporting] = useState(false);
 
   useEffect(() => {
     listAudits().then(setAudits);
@@ -40,6 +42,30 @@ export default function SettingsPage() {
       showStatus("success", "Audit exported. Check your downloads folder.");
     } catch (e) {
       showStatus("error", e instanceof Error ? e.message : "Export failed");
+    }
+  }
+
+  async function handleExportZip() {
+    if (!exportAuditId) { showStatus("error", "Select an audit to export."); return; }
+    setZipExporting(true);
+    try {
+      await exportAuditToZip(exportAuditId);
+      showStatus("success", "ZIP exported with all photos. Check your downloads folder. AirDrop or copy it to your Mac, then use Import ZIP below.");
+    } catch (e) {
+      showStatus("error", e instanceof Error ? e.message : "ZIP export failed");
+    } finally {
+      setZipExporting(false);
+    }
+  }
+
+  async function handleImportZip(file: File) {
+    try {
+      const { auditId, blobsRestored } = await importAuditFromZip(file);
+      const updated = await listAudits();
+      setAudits(updated);
+      showStatus("success", `ZIP imported — audit restored with ${blobsRestored} photo${blobsRestored !== 1 ? "s" : ""} (ID: ${auditId.slice(0, 8)}…).`);
+    } catch (e) {
+      showStatus("error", e instanceof Error ? e.message : "ZIP import failed");
     }
   }
 
@@ -119,32 +145,53 @@ export default function SettingsPage() {
       </Card>
 
       {/* Export */}
-      <Card title="Export Audit (JSON Backup)">
-        <div className="space-y-3 text-sm">
-          <p className="text-slate-600">
-            Exports all structured audit data (checklist, responses, verifications, findings, CARs, report)
-            as a JSON file. <strong>Photo and document blobs are not included</strong> — they are too large
-            for JSON and must be re-attached if you restore to a new device.
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            <select
-              aria-label="Select audit to export"
-              value={exportAuditId}
-              onChange={(e) => setExportAuditId(e.target.value)}
-              className="flex-1 min-w-[200px] border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <Card title="Export Audit">
+        <div className="space-y-4 text-sm">
+          {/* Audit selector — shared by both export buttons */}
+          <select
+            aria-label="Select audit to export"
+            value={exportAuditId}
+            onChange={(e) => setExportAuditId(e.target.value)}
+            className="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">— Select audit to export —</option>
+            {audits.map((a) => (
+              <option key={a.id} value={a.id}>{a.supplierName} — {a.supplierSite}</option>
+            ))}
+          </select>
+
+          {/* ZIP export — recommended for phone → Mac transfer */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+            <p className="font-medium text-blue-900">📦 Export with Photos (.zip) — recommended</p>
+            <p className="text-slate-600">
+              Downloads a single <code>.zip</code> file containing all audit data <strong>plus every photo and document</strong>
+              {" "}you captured. Transfer it to your Mac via <strong>AirDrop, iCloud Drive, or USB</strong>,
+              then import it below to fully restore the audit with all photos intact.
+            </p>
+            <button
+              type="button"
+              onClick={handleExportZip}
+              disabled={!exportAuditId || zipExporting}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded disabled:opacity-50 flex items-center gap-2"
             >
-              <option value="">— Select audit to export —</option>
-              {audits.map((a) => (
-                <option key={a.id} value={a.id}>{a.supplierName} — {a.supplierSite}</option>
-              ))}
-            </select>
+              {zipExporting ? "⏳ Building zip…" : "⬇ Export ZIP with Photos"}
+            </button>
+          </div>
+
+          {/* JSON export — metadata only, no blobs */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
+            <p className="font-medium text-slate-700">📄 Export Metadata Only (.json)</p>
+            <p className="text-slate-600">
+              Structured audit data only — checklist, responses, verifications, findings, CARs, report.
+              <strong> Photos and documents are not included.</strong>
+            </p>
             <button
               type="button"
               onClick={handleExport}
               disabled={!exportAuditId}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded disabled:opacity-50"
+              className="bg-slate-600 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded disabled:opacity-50"
             >
-              ⬇ Export JSON
+              ⬇ Export JSON (no photos)
             </button>
           </div>
         </div>
@@ -153,28 +200,58 @@ export default function SettingsPage() {
       {/* Import */}
       <Card title="Import Audit from Backup">
         <div className="space-y-3 text-sm">
-          <p className="text-slate-600">
-            Restore a previously exported JSON backup. If an audit with the same ID already exists,
-            it will be overwritten. Evidence blobs must be re-attached manually after import.
-          </p>
-          <button
-            type="button"
-            onClick={() => importRef.current?.click()}
-            className="bg-slate-600 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded"
-          >
-            📂 Choose Backup File (.json)
-          </button>
-          <input
-            ref={importRef}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleImport(f);
-              e.target.value = "";
-            }}
-          />
+          {/* ZIP import */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+            <p className="font-medium text-blue-900">📦 Import from ZIP (with photos)</p>
+            <p className="text-slate-600">
+              Restores an audit exported as a <code>.zip</code> — all audit data and photos are restored to
+              this browser&apos;s storage. Use this after transferring the ZIP from your phone.
+            </p>
+            <button
+              type="button"
+              onClick={() => importZipRef.current?.click()}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded"
+            >
+              📂 Choose ZIP File (.zip)
+            </button>
+            <input
+              ref={importZipRef}
+              type="file"
+              accept=".zip"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleImportZip(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
+
+          {/* JSON import */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
+            <p className="font-medium text-slate-700">📄 Import from JSON (no photos)</p>
+            <p className="text-slate-600">
+              Restore a JSON-only backup. Evidence blobs are not included and must be re-attached manually.
+            </p>
+            <button
+              type="button"
+              onClick={() => importRef.current?.click()}
+              className="bg-slate-600 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded"
+            >
+              📂 Choose JSON Backup (.json)
+            </button>
+            <input
+              ref={importRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleImport(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
         </div>
       </Card>
 

@@ -57,6 +57,8 @@ export interface AgendaContext {
   auditTeam: string[];
   checklistSections: { title: string; questionCount: number }[];
   previousFindings: string;
+  /** Optional draft agenda text uploaded by the auditor — AI will refine and expand it */
+  draftAgenda?: string;
 }
 
 export interface FindingContext {
@@ -104,6 +106,13 @@ export interface SupplierReviewContext {
   totalHighlighted: number;
 }
 
+export interface PpapReviewContext {
+  supplierName: string;
+  partNumber: string;
+  fileName: string;
+  extractedText: string;
+}
+
 export interface ChecklistReviewContext {
   checklistName: string;
   revision: string;
@@ -129,8 +138,8 @@ export interface OcrContext {
 // ---------------------------------------------------------------------------
 
 async function callAI(
-  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review" | "supplier_review",
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext | SupplierReviewContext
+  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review" | "supplier_review" | "ppap_review",
+  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext | SupplierReviewContext | PpapReviewContext
 ): Promise<AISuggestionResponse> {
   try {
     const res = await fetch("/api/ai/suggest", {
@@ -197,4 +206,10 @@ export async function getChecklistReviewSuggestion(
   ctx: ChecklistReviewContext
 ): Promise<AISuggestionResponse> {
   return callAI("checklist_review", ctx);
+}
+
+export async function getPpapReviewSuggestion(
+  ctx: PpapReviewContext
+): Promise<AISuggestionResponse> {
+  return callAI("ppap_review", ctx);
 }

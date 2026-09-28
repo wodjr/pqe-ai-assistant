@@ -1,6 +1,6 @@
 # TODO.md — PQE AI Assistant
 
-## Status: Phase 4 Quality Polish Complete — Ready for Deployment
+## Status: v0.4.0 — Mobile Storage & Agenda AI — Ready for Deployment
 
 ---
 
@@ -70,7 +70,18 @@
 
 ---
 
-## 🔄 Phase 5: Deployment
+## ✅ Phase 5: Mobile Field Use — COMPLETE
+
+- [x] ZIP export with photos — `exportAuditToZip()` bundles audit JSON + all photo/document blobs into a single `.zip` for phone → Mac transfer (AirDrop / iCloud / USB)
+- [x] ZIP import with photos — `importAuditFromZip()` restores all structured data + blobs back to IndexedDB on the Mac browser
+- [x] Settings page — "Export with Photos (.zip)" and "Import from ZIP" cards added (highlighted as recommended)
+- [x] Draft agenda upload on Audit Hub — auditor can upload `.txt` or `.docx` draft agenda before audit
+- [x] AI agenda refinement mode — when a draft is uploaded, AI refines it (time-slots every section, flags gaps, adds opening/closing meetings); without a draft, AI generates from scratch
+- [x] `jszip` 3.10.1 added as dependency
+
+---
+
+## 🔄 Phase 6: Deployment
 
 - [ ] Deploy to Vercel (`vercel.json` already present)
 - [ ] Set `OPENAI_API_KEY` environment variable in Vercel dashboard

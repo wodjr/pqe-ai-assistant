@@ -22,10 +22,11 @@ import type {
   Finding,
   CAR,
   AuditReport,
+  PpapPartReview,
 } from "@/types/project";
 
 const DB_NAME = "pqe-ai-assistant";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export type StoreNames =
   | "checklists"
@@ -36,7 +37,8 @@ export type StoreNames =
   | "findings"
   | "cars"
   | "reports"
-  | "blobs";
+  | "blobs"
+  | "ppapReviews";
 
 let _db: IDBPDatabase | null = null;
 
@@ -83,6 +85,11 @@ export async function getDB(): Promise<IDBPDatabase> {
       // Stored separately from metadata to keep structured records small.
       if (!db.objectStoreNames.contains("blobs")) {
         db.createObjectStore("blobs"); // key is blobKey string
+      }
+      // PPAP part submission reviews (added in DB_VERSION 2)
+      if (!db.objectStoreNames.contains("ppapReviews")) {
+        const pr = db.createObjectStore("ppapReviews", { keyPath: "id" });
+        pr.createIndex("by_audit", "auditId");
       }
     },
   });
@@ -305,6 +312,12 @@ export async function deleteAuditCascade(auditId: string): Promise<void> {
     await db.delete("evidence", ev.id);
   }
 
+  // Delete PPAP reviews for this audit
+  const ppapList = await db.getAllFromIndex("ppapReviews", "by_audit", auditId);
+  for (const pr of ppapList) {
+    await db.delete("ppapReviews", pr.id);
+  }
+
   const tx = db.transaction(
     ["audits", "supplierResponses", "verifications", "findings", "cars", "reports"],
     "readwrite"
@@ -338,6 +351,25 @@ export async function deleteAuditCascade(auditId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// PPAP Part Reviews
+// ---------------------------------------------------------------------------
+
+export async function savePpapReview(review: PpapPartReview): Promise<void> {
+  const db = await getDB();
+  await db.put("ppapReviews", review);
+}
+
+export async function getPpapReviewsByAudit(auditId: string): Promise<PpapPartReview[]> {
+  const db = await getDB();
+  return db.getAllFromIndex("ppapReviews", "by_audit", auditId);
+}
+
+export async function deletePpapReview(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete("ppapReviews", id);
+}
+
+// ---------------------------------------------------------------------------
 // Factory reset
 // ---------------------------------------------------------------------------
 
@@ -353,6 +385,7 @@ export async function factoryReset(): Promise<void> {
     "cars",
     "reports",
     "blobs",
+    "ppapReviews",
   ];
   const tx = db.transaction(stores, "readwrite");
   await Promise.all(stores.map((s) => tx.objectStore(s).clear()));

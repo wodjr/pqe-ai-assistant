@@ -3,7 +3,7 @@
  * app/audits/[id]/page.tsx — Audit detail / hub
  * Central navigation page for a specific audit.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   getAudit,
@@ -49,6 +49,10 @@ export default function AuditDetailPage() {
   const [agendaSuggestion, setAgendaSuggestion] = useState<string | null>(null);
   const [agendaLoading, setAgendaLoading] = useState(false);
   const [agendaError, setAgendaError] = useState<string | null>(null);
+  const [draftAgendaText, setDraftAgendaText] = useState<string>("");
+  const [draftAgendaFileName, setDraftAgendaFileName] = useState<string>("");
+  const [draftAgendaLoading, setDraftAgendaLoading] = useState(false);
+  const draftAgendaRef = useRef<HTMLInputElement>(null);
   // AI Supplier Response Review
   const [supplierFile, setSupplierFile] = useState<File | null>(null);
   const [supplierParsing, setSupplierParsing] = useState(false);
@@ -132,6 +136,35 @@ export default function AuditDetailPage() {
       </div>
     );
 
+  async function handleDraftAgendaUpload(file: File) {
+    setDraftAgendaLoading(true);
+    setDraftAgendaFileName(file.name);
+    try {
+      // Support plain text (.txt) and read .docx as raw text fallback
+      if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        // For .docx: extract visible text by reading the file as ArrayBuffer
+        // then stripping XML tags — good enough for an agenda draft
+        const buf = await file.arrayBuffer();
+        const text = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+        // Pull text between XML tags (w:t elements)
+        const matches = text.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) ?? [];
+        const extracted = matches
+          .map((m) => m.replace(/<[^>]+>/g, "").trim())
+          .filter(Boolean)
+          .join(" ");
+        setDraftAgendaText(extracted || text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+      } else {
+        // .txt or other plain text
+        setDraftAgendaText(await file.text());
+      }
+    } catch {
+      setDraftAgendaText("");
+      setDraftAgendaFileName("");
+    } finally {
+      setDraftAgendaLoading(false);
+    }
+  }
+
   async function handleAgenda() {
     if (!audit || !checklist) return;
     setAgendaLoading(true);
@@ -149,6 +182,7 @@ export default function AuditDetailPage() {
         questionCount: s.questions.length,
       })),
       previousFindings: "",
+      draftAgenda: draftAgendaText || undefined,
     });
     if (isAIError(result)) {
       setAgendaError(result.error);
@@ -487,15 +521,72 @@ export default function AuditDetailPage() {
       {/* AI Agenda + Opening Presentation */}
       <Card title="✦ AI Audit Agenda &amp; Opening Notes">
         <p className="text-xs text-slate-500 mb-3">
-          Generate a day-by-day agenda, opening meeting briefing notes, risk focus areas, and
-          pre-arrival document requests. AI suggestions are advisory only.
+          Upload your draft agenda (optional) and the AI will refine it into a polished day-by-day
+          schedule — with time slots for each checklist section, risk focus areas, and documents
+          to request before arrival. Without a draft, the AI builds a fresh agenda from scratch.
+          AI suggestions are advisory only.
         </p>
+
+        {/* Draft agenda upload */}
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4 space-y-2">
+          <p className="text-xs font-medium text-slate-700">📄 Upload Your Draft Agenda (optional)</p>
+          <p className="text-xs text-slate-500">
+            Accepted formats: <code>.txt</code> or <code>.docx</code>. The AI will use your draft as a starting point and fill in gaps.
+          </p>
+
+          {!draftAgendaFileName && !draftAgendaLoading && (
+            <label className="cursor-pointer inline-flex items-center gap-2 bg-slate-600 hover:bg-slate-700 text-white text-xs font-medium px-3 py-1.5 rounded">
+              📂 Choose Draft Agenda File
+              <input
+                ref={draftAgendaRef}
+                type="file"
+                accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleDraftAgendaUpload(f);
+                  if (e.target) e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+
+          {draftAgendaLoading && (
+            <div className="flex items-center gap-2 text-xs text-blue-700">
+              <span className="inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              Reading file…
+            </div>
+          )}
+
+          {draftAgendaFileName && !draftAgendaLoading && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-green-700 font-medium">✓ {draftAgendaFileName}</span>
+              <button
+                type="button"
+                onClick={() => { setDraftAgendaText(""); setDraftAgendaFileName(""); setAgendaSuggestion(null); }}
+                className="text-xs text-slate-400 hover:text-slate-600 underline"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+
+          {draftAgendaText && (
+            <details className="mt-1">
+              <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600">Preview extracted text</summary>
+              <pre className="mt-2 text-xs text-slate-600 whitespace-pre-wrap bg-white border border-slate-200 rounded p-2 max-h-40 overflow-y-auto">
+                {draftAgendaText.slice(0, 800)}{draftAgendaText.length > 800 ? "\n…(truncated for preview)" : ""}
+              </pre>
+            </details>
+          )}
+        </div>
+
         <AISuggestionBox
           suggestion={agendaSuggestion}
           loading={agendaLoading}
           error={agendaError}
           onRequest={handleAgenda}
-          buttonLabel="Generate Agenda &amp; Opening Notes"
+          buttonLabel={draftAgendaText ? "✦ Refine My Draft Agenda with AI" : "✦ Generate Agenda &amp; Opening Notes"}
         />
       </Card>
     </div>
