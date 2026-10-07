@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   getAudit,
@@ -21,7 +21,6 @@ import {
   saveEvidence,
 } from "@/lib/storage/db";
 import { nanoid } from "@/lib/utils/nanoid";
-import { formatDateTime } from "@/lib/utils/format";
 import {
   getSmartNotesSuggestion,
   getSmartPhotoSuggestion,
@@ -112,7 +111,6 @@ const MARKER_CONFIG: Record<
 
 export default function SmartAuditPage() {
   const { id: auditId } = useParams<{ id: string }>();
-  const router = useRouter();
 
   // Core audit state
   const [audit, setAudit] = useState<Audit | null>(null);

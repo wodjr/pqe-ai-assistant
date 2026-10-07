@@ -31,7 +31,6 @@ export default function ChecklistDetailPage() {
   const [viewMode, setViewMode] = useState<"questions" | "raw_excel">("questions");
   const [rawSheets, setRawSheets] = useState<SheetData[]>([]);
   const [activeSheetIdx, setActiveSheetIdx] = useState(0);
-  const [rawLoading, setRawLoading] = useState(false);
 
   useEffect(() => {
     getChecklist(id).then((c) => {
