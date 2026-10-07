@@ -1,6 +1,6 @@
 # TODO.md — PQE AI Assistant
 
-## Status: v0.4.0 — Mobile Storage & Agenda AI — Ready for Deployment
+## Status: v0.5.0 — Smart Audit Note Taker (Live Plaud-Style Recorder)
 
 ---
 
@@ -81,7 +81,27 @@
 
 ---
 
-## 🔄 Phase 6: Deployment
+## ✅ Phase 6: Smart Audit Note Taker (v0.5.0) — COMPLETE
+
+- [x] **v0.5A: Plaud-style recording & live notes studio** (`/audits/[id]/smart`)
+  - Live recording with Pause/Resume/Stop controls, timer, and persistent state in IndexedDB (`smartSessions` store)
+  - Continuous speech transcription stream using Web Speech API + Whisper
+  - Non-interruptive shop floor photo capture with AI risk analysis and evidence linking
+  - Quick Voice Markers (auto-detection of "PQE note", "Potential finding", "Take action", etc. + 1-tap quick buttons)
+  - Categorized Smart AI Notes (Statements, Commitments, Process Controls, Documents Mentioned, Risks, Actions)
+- [x] **v0.5B: Real-time prioritized auditor question assistant**
+  - AI quietly listens and generates the top 1–3 probing questions (CRITICAL, IMPORTANT, FOLLOW-UP) with rationale and suggested actions
+  - Individual question dismiss and auto-update
+- [x] **v0.5C: Checklist awareness & end-of-session smart summary**
+  - Checklist Coverage Awareness Matrix (COVERED, PARTIALLY_COVERED, NOT_COVERED, OBJECTIVE_EVIDENCE_REQUIRED)
+  - 13-point structured draft Session Summary with closing meeting recommendations
+  - Full human-in-the-loop invariant preserved (AI never auto-approves checklist or findings)
+- [x] Audit Hub integration with hero banner and "Start Smart Audit" CTA
+- [x] Full backup/restore support in ZIP/JSON (`lib/exportBackup.ts`)
+
+---
+
+## 🔄 Phase 7: Deployment
 
 - [ ] Deploy to Vercel (`vercel.json` already present)
 - [ ] Set `OPENAI_API_KEY` environment variable in Vercel dashboard

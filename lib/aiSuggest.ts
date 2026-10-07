@@ -133,13 +133,87 @@ export interface OcrContext {
   imageBase64: string;
 }
 
+export interface SmartNotesContext {
+  supplierName: string;
+  auditType: string;
+  scope?: string;
+  transcript: string;
+  recentMarkers?: { type: string; text: string; timestamp: string }[];
+}
+
+export interface SmartPhotoContext {
+  supplierName: string;
+  processType?: string;
+  scope?: string;
+  auditorNote?: string;
+  nearestTranscript?: string;
+  imageBase64?: string;
+}
+
+export interface SmartQuestionsContext {
+  supplierName: string;
+  auditType: string;
+  scope?: string;
+  checklistHighlights?: string;
+  transcript: string;
+}
+
+export interface SmartCoverageContext {
+  supplierName: string;
+  auditType: string;
+  transcript: string;
+  checklistQuestions: { id: string; reference: string; text: string }[];
+}
+
+export interface SmartSummaryContext {
+  supplierName: string;
+  supplierSite?: string;
+  auditType: string;
+  scope?: string;
+  durationSec: number;
+  transcript: string;
+  markers: { type: string; text: string; timestamp: string }[];
+  photos: { caption: string; auditorNote?: string; process?: string }[];
+  checklistCoverage?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Fetch helpers
 // ---------------------------------------------------------------------------
 
 async function callAI(
-  mode: "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review" | "supplier_review" | "ppap_review",
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext | SupplierReviewContext | PpapReviewContext
+  mode:
+    | "audit_prep"
+    | "verification"
+    | "finding"
+    | "daily_summary"
+    | "drawing"
+    | "ocr"
+    | "agenda"
+    | "checklist_review"
+    | "supplier_review"
+    | "ppap_review"
+    | "smart_notes"
+    | "smart_photo_analysis"
+    | "smart_questions"
+    | "smart_coverage"
+    | "smart_session_summary",
+  context:
+    | AuditPrepContext
+    | VerificationContext
+    | FindingContext
+    | DailySummaryContext
+    | DrawingContext
+    | OcrContext
+    | AgendaContext
+    | ChecklistReviewContext
+    | SupplierReviewContext
+    | PpapReviewContext
+    | SmartNotesContext
+    | SmartPhotoContext
+    | SmartQuestionsContext
+    | SmartCoverageContext
+    | SmartSummaryContext
 ): Promise<AISuggestionResponse> {
   try {
     const res = await fetch("/api/ai/suggest", {
@@ -212,4 +286,34 @@ export async function getPpapReviewSuggestion(
   ctx: PpapReviewContext
 ): Promise<AISuggestionResponse> {
   return callAI("ppap_review", ctx);
+}
+
+export async function getSmartNotesSuggestion(
+  ctx: SmartNotesContext
+): Promise<AISuggestionResponse> {
+  return callAI("smart_notes", ctx);
+}
+
+export async function getSmartPhotoSuggestion(
+  ctx: SmartPhotoContext
+): Promise<AISuggestionResponse> {
+  return callAI("smart_photo_analysis", ctx);
+}
+
+export async function getSmartQuestionsSuggestion(
+  ctx: SmartQuestionsContext
+): Promise<AISuggestionResponse> {
+  return callAI("smart_questions", ctx);
+}
+
+export async function getSmartCoverageSuggestion(
+  ctx: SmartCoverageContext
+): Promise<AISuggestionResponse> {
+  return callAI("smart_coverage", ctx);
+}
+
+export async function getSmartSessionSummarySuggestion(
+  ctx: SmartSummaryContext
+): Promise<AISuggestionResponse> {
+  return callAI("smart_session_summary", ctx);
 }

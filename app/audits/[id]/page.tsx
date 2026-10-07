@@ -290,11 +290,12 @@ export default function AuditDetailPage() {
   ];
 
   const auditTools = [
-    { label: "Voice Recording",    href: `/audits/${id}/voice`,         description: "Record and transcribe conversations", icon: "🎙" },
+    { label: "Smart Audit Note Taker", href: `/audits/${id}/smart`,     description: "Live Plaud-style recorder & AI notes", icon: "🎙" },
     { label: "Document OCR",       href: `/audits/${id}/ocr`,           description: "Photograph and analyse documents",   icon: "🔬" },
     { label: "Drawing Analysis",   href: `/audits/${id}/drawing`,       description: "Identify CTF characteristics",       icon: "📐" },
     { label: "PPAP Review",        href: `/audits/${id}/ppap`,          description: "18 PPAP elements checklist",         icon: "📋" },
     { label: "Evidence Trace",     href: `/audits/${id}/trace`,         description: "CTF vertical traceability chain",    icon: "🔗" },
+    { label: "Voice Recording",    href: `/audits/${id}/voice`,         description: "Audio clips and transcripts",        icon: "🔉" },
     { label: "Qualification",      href: `/audits/${id}/qualification`, description: "APPROVE / CONDITIONAL / REJECT",     icon: "🏅" },
   ];
 
@@ -332,6 +333,29 @@ export default function AuditDetailPage() {
           </div>
         )}
       </Card>
+
+      {/* Smart Audit Hero Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl p-5 border border-indigo-800 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎙</span>
+            <h2 className="text-base font-bold text-white tracking-tight">Smart Audit Live Note Taker</h2>
+            <span className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase">
+              v0.5.0
+            </span>
+          </div>
+          <p className="text-xs text-slate-300 max-w-xl">
+            Plaud-style live recorder with real-time speech transcription, categorized AI notes (commitments, controls, risks), shop-floor quick voice markers, and photo linking.
+          </p>
+        </div>
+        <Link
+          href={`/audits/${id}/smart`}
+          className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
+        >
+          <span>▶</span>
+          <span>Start Smart Audit</span>
+        </Link>
+      </div>
 
       {/* Status controls */}
       <Card title="Audit Status">

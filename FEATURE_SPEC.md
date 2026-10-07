@@ -1,4 +1,4 @@
-# FEATURE_SPEC.md — PQE AI Assistant v0.4.0
+# FEATURE_SPEC.md — PQE AI Assistant v0.5.0
 
 ## Build Status Key
 - ✅ Built and working
@@ -26,6 +26,14 @@
 | ✅ | PFMEA, Control Plan, MSA, Gage R&R, SPC, Cp/Cpk and PPAP evidence review |
 | ✅ | Material certificate, CoC, FAI, dimensional-report and calibration-record verification (OCR page) |
 | ✅ | Voice recording and transcription of audit conversations with consent controls |
+| ✅ | Smart Audit Note Taker — Plaud-style live meeting & shop floor walkthrough recorder (`/audits/[id]/smart`) |
+| ✅ | Live speech transcription stream with interim results and automatic persistence |
+| ✅ | Categorized Smart AI Notes (Statements, Commitments, Process Controls, Risks, Actions) |
+| ✅ | Real-time AI Auditor Question Assistant — Prioritized (CRITICAL, IMPORTANT, FOLLOW-UP) probing questions |
+| ✅ | Non-interruptive shop floor photo capture with AI risk & question suggestions |
+| ✅ | Quick Voice Markers ("PQE note", "Potential finding", "Take action", "Good practice", etc.) |
+| ✅ | Checklist Coverage Awareness Matrix (COVERED, PARTIALLY_COVERED, NOT_COVERED, OBJECTIVE_EVIDENCE_REQUIRED) |
+| ✅ | Structured 13-Point End-of-Session Smart Summary with closing meeting recommendations |
 | ✅ | Real-time AI suggestions for additional auditor questions and evidence requests |
 | ✅ | "Show me" audit-question guidance based on identified risks and missing evidence (AI Verification Guidance) |
 | ✅ | Daily audit summary and final audit-report generation |

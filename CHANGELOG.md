@@ -4,6 +4,31 @@ All notable changes to this project are documented here.
 
 ---
 
+## [0.5.0] — Smart Audit Note Taker (Live Plaud-Style Recorder) — 2025
+
+### Added
+- **Live Smart Audit Studio** (`app/audits/[id]/smart/page.tsx`)
+  - Plaud-style live meeting and shop floor walkthrough recorder.
+  - Controls: Start, Pause, Resume, Stop, and New Session with real-time session duration timer.
+  - Streaming speech transcription using browser Web Speech API with interim results and automatic IndexedDB persistence.
+  - Quick Voice Markers: automatic acoustic detection of trigger phrases ("PQE note", "Potential finding", "Take action", "Follow up", "Good practice", "Need evidence") plus 1-tap quick marker buttons and custom notes.
+  - Shop floor photo capture without interrupting recording, with optional AI observation & risk suggestions.
+  - Categorized Smart Live Notes: Statements, Supplier Commitments, Process Controls, Documents Mentioned, Risks & Discrepancies, and Follow-up Actions.
+- **AI Auditor Question Assistant (Prioritized Prompts)**
+  - Real-time background analysis generates the top 1–3 probing questions classified as `CRITICAL`, `IMPORTANT`, or `FOLLOW_UP`.
+  - Includes specific rationale, suggested verification actions, and dismiss controls.
+- **Checklist Coverage Awareness Matrix**
+  - Live comparison of audit conversation against checklist requirements.
+  - Categorizes items into `COVERED`, `PARTIALLY_COVERED`, `NOT_COVERED`, and `OBJECTIVE_EVIDENCE_REQUIRED`.
+- **13-Point End-of-Session Smart Summary**
+  - Generates a structured draft covering: Topics Discussed, Processes Observed, Documents Reviewed, Objective Evidence, Photos, Potential Findings, Observations, Good Practices, Commitments, Open Questions, Missing Evidence, Action Items, and Closing Meeting Points.
+- **Storage Layer (IndexedDB DB_VERSION 3)**
+  - Added `smartSessions` object store with `by_audit` index, cascade delete, and ZIP export/import integration.
+- **Audit Hub Hero Banner**
+  - Prominent "Start Smart Audit" CTA on `app/audits/[id]/page.tsx`.
+
+---
+
 ## [0.4.0] — Mobile Field Use + Agenda AI — 2025
 
 ### Added

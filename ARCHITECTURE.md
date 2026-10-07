@@ -32,6 +32,7 @@
 │   │   ├── new/page.tsx            # Create audit form
 │   │   └── [id]/
 │   │       ├── page.tsx            # Audit Hub (AI prep panel)
+│   │       ├── smart/page.tsx      # Smart Audit Live Note Taker (Plaud-style)
 │   │       ├── supplier/page.tsx   # Supplier self-assessment
 │   │       ├── verify/page.tsx     # Auditor onsite verification (AI guidance)
 │   │       ├── voice/page.tsx      # Voice recording + Whisper transcription
@@ -123,7 +124,7 @@ The following fields can **only** be set by an explicit user checkbox or confirm
 
 ---
 
-## IndexedDB Stores
+## IndexedDB Stores (DB_VERSION 3)
 
 | Store | Key | Indexes |
 |---|---|---|
@@ -136,6 +137,8 @@ The following fields can **only** be set by an explicit user checkbox or confirm
 | `cars` | `id` | `by_audit`, `by_finding` |
 | `reports` | `id` | `by_audit` |
 | `blobs` | `blobKey` | — |
+| `ppapReviews` | `id` | `by_audit` |
+| `smartSessions` | `id` | `by_audit` |
 
 ---
 

@@ -17,6 +17,7 @@ import {
   getCARsByAudit,
   getReportByAudit,
   getPpapReviewsByAudit,
+  getSmartSessionsByAudit,
   saveAudit,
   saveChecklist,
   saveSupplierResponse,
@@ -26,6 +27,7 @@ import {
   saveCAR,
   saveReport,
   savePpapReview,
+  saveSmartSession,
   getBlob,
   saveBlob,
 } from "@/lib/storage/db";
@@ -43,13 +45,14 @@ async function buildExportPackage(auditId: string): Promise<AuditExportPackage> 
   const checklist = await getChecklist(audit.checklistTemplateId);
   if (!checklist) throw new Error(`Checklist not found for audit ${auditId}`);
 
-  const [supplierResponses, verifications, evidenceMetadata, findings, cars, ppapReviews] = await Promise.all([
+  const [supplierResponses, verifications, evidenceMetadata, findings, cars, ppapReviews, smartSessions] = await Promise.all([
     getSupplierResponsesByAudit(auditId),
     getVerificationsByAudit(auditId),
     getEvidenceByAudit(auditId),
     getFindingsByAudit(auditId),
     getCARsByAudit(auditId),
     getPpapReviewsByAudit(auditId),
+    getSmartSessionsByAudit(auditId),
   ]);
 
   const report = await getReportByAudit(auditId);
@@ -67,6 +70,7 @@ async function buildExportPackage(auditId: string): Promise<AuditExportPackage> 
     cars,
     report: report ?? null,
     ppapReviews,
+    smartSessions,
   };
 }
 
@@ -87,6 +91,7 @@ async function restorePackage(pkg: AuditExportPackage): Promise<string> {
   await Promise.all(pkg.cars.map(saveCAR));
   if (pkg.report) await saveReport(pkg.report);
   if (pkg.ppapReviews?.length) await Promise.all(pkg.ppapReviews.map(savePpapReview));
+  if (pkg.smartSessions?.length) await Promise.all(pkg.smartSessions.map(saveSmartSession));
   return pkg.audit.id;
 }
 

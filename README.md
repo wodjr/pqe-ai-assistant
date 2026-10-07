@@ -1,4 +1,4 @@
-# PQE AI Assistant — v0.4.0
+# PQE AI Assistant — v0.5.0
 
 A secure, AI-assisted web and mobile application that supports Procurement Quality Engineers throughout the complete supplier qualification and onsite audit process.
 
@@ -24,6 +24,7 @@ Covers the full audit lifecycle in one connected workflow:
 - 📷 Mobile photo capture — take photos directly from phone camera; stored locally in IndexedDB
 - OCR document analysis — photograph material certificates, CoC, FAI, calibration records; AI extracts and flags concerns
 - Technical drawing analysis — GPT-4o identifies CTF characteristics, GD&T callouts, balloon references
+- 🎙 **Smart Audit Note Taker (Live Plaud-Style Recorder)** — real-time transcription, categorized live notes, non-interruptive photo evidence capture, quick voice markers, prioritized auditor prompts (1–3 top questions), checklist coverage awareness matrix, and 13-point draft session summary
 - Voice recording and Whisper transcription with explicit consent gate; transcripts saved as evidence
 - PPAP evidence review — all 18 PPAP elements with per-element status and evidence links
 - Vertical CTF evidence trace — Drawing → PFMEA → Control Plan → Work Instruction → Measurement System → Inspection Result

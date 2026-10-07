@@ -1,0 +1,209 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PQE AI Assistant — User Operation Manual (v0.5.0)</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1f2328;
+    background-color: #ffffff;
+    line-height: 1.6;
+    margin: 0;
+    padding: 24px;
+  }
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .header {
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  .badge {
+    display: inline-block;
+    background: #2563eb;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1 { font-size: 24px; margin: 0 0 8px 0; color: #0f172a; }
+  h2 { font-size: 18px; color: #1e3a8a; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-top: 28px; }
+  h3 { font-size: 15px; color: #0f172a; margin-top: 18px; margin-bottom: 6px; }
+  p, li { font-size: 14px; color: #334155; }
+  ul, ol { padding-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+  .card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 14px 0;
+  }
+  .callout {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout-warn {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 12px 0;
+  }
+  th, td {
+    border: 1px solid #e2e8f0;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th { background: #f1f5f9; color: #0f172a; font-weight: 600; }
+  code {
+    background: #f1f5f9;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #1e40af;
+  }
+  .print-btn {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    display: inline-block;
+  }
+  @media print {
+    .print-btn, .no-print { display: none !important; }
+    body { padding: 0; }
+  }
+  footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    font-size: 12px;
+    color: #64748b;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <span class="badge">PQE Assistant v0.5.0</span>
+    <h1>Procurement Quality Engineering AI Assistant</h1>
+    <p style="color:#64748b;margin:0;font-size:13px">Official User Operation Manual &amp; Field Guide</p>
+  </div>
+
+  <div class="no-print">
+    <button class="print-btn">🖨️ Print to PDF / Save as PDF</button>
+  </div>
+
+  <h2>1. Overview &amp; Lifecycle</h2>
+  <p>The PQE AI Assistant supports Quality Engineers throughout supplier qualification, manufacturing process evaluations, and shop-floor line walkthroughs.</p>
+  
+  <div class="card">
+    <strong>End-to-End Workflow:</strong><br />
+    <code>Import Checklist</code> ➔ <code>Create Audit</code> ➔ <code>AI Pre-Audit Prep</code> ➔ <code>Live Smart Audit Studio</code> ➔ <code>Onsite Findings</code> ➔ <code>8D CARs</code> ➔ <code>Qualification Sign-off</code>
+  </div>
+
+  <h2>2. Pre-Audit Preparation</h2>
+  <h3>2.1 Importing Excel Checklists</h3>
+  <ol>
+    <li>Go to <strong>Checklists</strong> in the top navigation.</li>
+    <li>Upload your company's standard audit Excel workbook (<code>.xlsx</code> / <code>.xls</code>).</li>
+    <li>The system parses sections, questions, references, and guidance while preserving the original file.</li>
+  </ol>
+
+  <h3>2.2 Creating an Audit &amp; Generating Agenda</h3>
+  <ol>
+    <li>Click <strong>Audits</strong> ➔ <strong>+ New Audit</strong> and fill in supplier details.</li>
+    <li>On the Audit Hub, use the <strong>AI Audit Agenda</strong> card to generate a day-by-day 08:00–17:00 time-slotted schedule, opening notes, and pre-arrival document requests.</li>
+    <li>Upload the supplier's completed pre-audit self-assessment Excel to receive an automatic <strong>AI Pre-Audit Briefing</strong> flagging all risk areas.</li>
+  </ol>
+
+  <h2>3. Onsite Smart Audit Note Taker (Live Studio)</h2>
+  <div class="callout">
+    <strong>Plaud-Style Walkthrough Studio:</strong> Designed for mobile/desktop one-handed use during live line walks and interviews.
+  </div>
+
+  <h3>3.1 Live Recording &amp; Voice Markers</h3>
+  <ul>
+    <li>Tap <strong>Start Smart Audit</strong> and confirm the recording consent notice.</li>
+    <li><strong>Speech-to-Text:</strong> Real-time streaming transcription with continuous auto-save to browser storage.</li>
+    <li><strong>Voice Markers:</strong> Speak phrases like <code>"PQE note"</code>, <code>"Potential finding"</code>, <code>"Take action"</code>, <code>"Good practice"</code>, or tap the colored quick-chips to mark timestamps without typing.</li>
+  </ul>
+
+  <h3>3.2 Non-Interruptive Photo Capture</h3>
+  <ul>
+    <li>Tap <strong>📷 Add Photo</strong> on the sticky recorder bar.</li>
+    <li>Take or attach a picture of shop floor evidence, parts, or gauges.</li>
+    <li>AI suggests potential manufacturing risks (poka-yoke absence, orientation error, calibration expiry) without pausing the audio recording.</li>
+  </ul>
+
+  <h3>3.3 Smart AI Notes &amp; Prioritized Prompts</h3>
+  <ul>
+    <li><strong>Smart Notes Tab:</strong> Summarizes the discussion into Statements, Supplier Commitments, Process Controls, Documents Mentioned, and Risks.</li>
+    <li><strong>AI Question Assistant:</strong> Quietly recommends the top 1–3 probing questions classified as <code>CRITICAL</code>, <code>IMPORTANT</code>, or <code>FOLLOW_UP</code>.</li>
+    <li><strong>Checklist Matrix:</strong> Live comparison categorizing items into <code>COVERED</code>, <code>PARTIALLY_COVERED</code>, <code>NOT_COVERED</code>, or <code>OBJECTIVE_EVIDENCE_REQUIRED</code>.</li>
+    <li><strong>End-of-Session 13-Point Summary:</strong> Produces a full closing meeting draft.</li>
+  </ul>
+
+  <h2>4. Deep Technical Onsite Tools</h2>
+  <table>
+    <tr><th>Tool</th><th>Purpose</th></tr>
+    <tr><td><strong>Document OCR</strong></td><td>Photograph material certificates / calibration logs; AI verifies chemistry, specs, and expiry.</td></tr>
+    <tr><td><strong>Drawing Analysis</strong></td><td>Photograph 2D drawings; GPT-4o identifies CTF characteristics and GD&amp;T callouts.</td></tr>
+    <tr><td><strong>PPAP Review</strong></td><td>Evaluates 18 PPAP elements, Cpk capability metrics, and PSW sign-off status.</td></tr>
+    <tr><td><strong>Evidence Trace</strong></td><td>Vertical CTF chain: Drawing ➔ PFMEA ➔ Control Plan ➔ Work Instruction ➔ MSA ➔ Inspection.</td></tr>
+  </table>
+
+  <h2>5. Findings, 8D CARs &amp; Reports</h2>
+  <h3>5.1 Findings Log &amp; 8D CARs</h3>
+  <ul>
+    <li>Classify findings as <code>MAJOR</code>, <code>MINOR</code>, <code>OBSERVATION</code>, or <code>OFI</code>.</li>
+    <li>Use 8D workflow for corrective actions: Containment ➔ Root Cause ➔ Corrective Action ➔ Effectiveness Verification ➔ Auditor Closure.</li>
+  </ul>
+
+  <h3>5.2 Qualification &amp; Print-Ready Report</h3>
+  <ul>
+    <li>Lead auditor issues formal qualification: <code>APPROVE</code>, <code>CONDITIONAL</code>, or <code>REJECT</code>.</li>
+    <li>Click <strong>Generate Report</strong> ➔ <strong>Print / Save PDF</strong> for client-ready executive PDF reports.</li>
+  </ul>
+
+  <h2>6. Phone-to-Mac Transfer (ZIP Backup)</h2>
+  <div class="callout-warn">
+    <strong>Backup Rule:</strong> In the prototype, all data is in browser IndexedDB. Go to <strong>Settings</strong> ➔ <strong>Export with Photos (.zip)</strong> to bundle all audit data + photo blobs into a single file for AirDrop/iCloud transfer.
+  </div>
+
+  <h2>7. Mandatory Human-in-the-Loop Rules</h2>
+  <ul>
+    <li>AI suggestions are strictly advisory and never auto-approve findings or checklist items.</li>
+    <li>Only authorized human auditors can approve findings, close CARs, and sign qualification decisions.</li>
+  </ul>
+
+  <footer>
+    Made with IBM Bob · PQE AI Assistant
+  </footer>
+</div>
+</body>
+</html>

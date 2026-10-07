@@ -127,11 +127,85 @@ interface PpapReviewContext {
   extractedText: string;
 }
 
-type SuggestMode = "audit_prep" | "verification" | "finding" | "daily_summary" | "drawing" | "ocr" | "agenda" | "checklist_review" | "supplier_review" | "ppap_review";
+interface SmartNotesContext {
+  supplierName: string;
+  auditType: string;
+  scope?: string;
+  transcript: string;
+  recentMarkers?: { type: string; text: string; timestamp: string }[];
+}
+
+interface SmartPhotoContext {
+  supplierName: string;
+  processType?: string;
+  scope?: string;
+  auditorNote?: string;
+  nearestTranscript?: string;
+  imageBase64?: string;
+}
+
+interface SmartQuestionsContext {
+  supplierName: string;
+  auditType: string;
+  scope?: string;
+  checklistHighlights?: string;
+  transcript: string;
+}
+
+interface SmartCoverageContext {
+  supplierName: string;
+  auditType: string;
+  transcript: string;
+  checklistQuestions: { id: string; reference: string; text: string }[];
+}
+
+interface SmartSummaryContext {
+  supplierName: string;
+  supplierSite?: string;
+  auditType: string;
+  scope?: string;
+  durationSec: number;
+  transcript: string;
+  markers: { type: string; text: string; timestamp: string }[];
+  photos: { caption: string; auditorNote?: string; process?: string }[];
+  checklistCoverage?: string;
+}
+
+type SuggestMode =
+  | "audit_prep"
+  | "verification"
+  | "finding"
+  | "daily_summary"
+  | "drawing"
+  | "ocr"
+  | "agenda"
+  | "checklist_review"
+  | "supplier_review"
+  | "ppap_review"
+  | "smart_notes"
+  | "smart_photo_analysis"
+  | "smart_questions"
+  | "smart_coverage"
+  | "smart_session_summary";
 
 interface SuggestRequest {
   mode: SuggestMode;
-  context: AuditPrepContext | VerificationContext | FindingContext | DailySummaryContext | DrawingContext | OcrContext | AgendaContext | ChecklistReviewContext | SupplierReviewContext | PpapReviewContext;
+  context:
+    | AuditPrepContext
+    | VerificationContext
+    | FindingContext
+    | DailySummaryContext
+    | DrawingContext
+    | OcrContext
+    | AgendaContext
+    | ChecklistReviewContext
+    | SupplierReviewContext
+    | PpapReviewContext
+    | SmartNotesContext
+    | SmartPhotoContext
+    | SmartQuestionsContext
+    | SmartCoverageContext
+    | SmartSummaryContext;
 }
 
 // ---------------------------------------------------------------------------
@@ -585,6 +659,247 @@ Keep total response under 750 words. Be specific and reference actual sheet name
 IMPORTANT: Base findings only on the text provided. Do not invent data. Chinese content is valid evidence.`;
 }
 
+function buildSmartNotesPrompt(ctx: SmartNotesContext): string {
+  const markersBlock = ctx.recentMarkers?.length
+    ? `\nAUDITOR VOICE MARKERS (Flagged in real-time):\n${ctx.recentMarkers.map((m) => `[${m.type} @ ${m.timestamp}] ${m.text}`).join("\n")}\n`
+    : "";
+
+  return `You are an expert Procurement Quality Engineer (PQE/SQE) listening to an ongoing supplier audit live conversation.
+
+Supplier: ${ctx.supplierName}
+Audit Type: ${ctx.auditType}
+Scope: ${ctx.scope || "General mechanical / manufacturing"}
+${markersBlock}
+LIVE TRANSCRIPT SEGMENTS:
+---
+${ctx.transcript}
+---
+
+Analyze the discussion and generate two clear sections:
+
+### 1. 📝 SMART AI NOTES (Categorized & Factual)
+Extract structured bullet points under these categories (only include categories that have relevant information):
+- **Statements & Context**: Key background stated by the supplier or team.
+- **Supplier Commitments**: Specific promises, frequencies, or responsibilities pledged.
+- **Process Controls**: Stated inspection methods, calibration, torque checks, fixtures, poka-yoke, or maintenance routines.
+- **Documents / Records Mentioned**: Specific certificates, inspection logs, work instructions, or drawings referenced.
+- **Risks & Discrepancies**: Potential failure modes, lack of controls, inconsistency with drawings/standards, or vague claims.
+- **Follow-up Actions**: Immediate actions required by the audit team or supplier.
+
+### 2. 💡 AUDITOR PROMPTS & PROBING QUESTIONS
+Suggest 2–3 high-value, specific follow-up questions the auditor should ask right now:
+- Target missing objective evidence (e.g. "Ask supplier to show the torque verification log for Station 3").
+- Probe reaction plans (e.g. "What is the containment reaction plan if morning check is out of tolerance?").
+- Clarify ambiguous claims.
+
+Keep the tone concise, professional, and practical for shop-floor auditing. Max 450 words.`;
+}
+
+function buildSmartPhotoPrompt(ctx: SmartPhotoContext): string {
+  return `You are a Procurement Quality Engineering expert analyzing a photo evidence item captured during an onsite audit.
+
+Supplier: ${ctx.supplierName}
+Process / Area: ${ctx.processType || ctx.scope || "Manufacturing Line"}
+Auditor's Spoken / Typed Note: "${ctx.auditorNote || "None provided"}"
+${ctx.nearestTranscript ? `Surrounding Conversation Transcript: "${ctx.nearestTranscript}"` : ""}
+
+Analyze the observation and provide:
+1. **Observation Summary**: Factual description of what is observed.
+2. **Potential Quality / Manufacturing Risk**: Why this may be a concern (e.g. poka-yoke absence, orientation error, calibration expiry, contamination, lack of traceability).
+3. **Suggested Probing Question**: Exact question the auditor should ask the line supervisor / operator.
+4. **Suggested Verification Link**: Relevant checklist / standard area (e.g. Work Instructions, Poka-Yoke, Tooling Control, Material Handling).
+
+Keep the response under 160 words. Do not issue a final nonconformance verdict — that is the auditor's prerogative.`;
+}
+
+function sanitiseSmartNotes(ctx: SmartNotesContext): SmartNotesContext {
+  return {
+    supplierName: truncate(ctx.supplierName, 100),
+    auditType: truncate(ctx.auditType, 50),
+    scope: truncate(ctx.scope, 300),
+    transcript: truncate(ctx.transcript, 4000),
+    recentMarkers: (ctx.recentMarkers ?? []).slice(0, 15).map((m) => ({
+      type: truncate(m.type, 30),
+      text: truncate(m.text, 200),
+      timestamp: truncate(m.timestamp, 20),
+    })),
+  };
+}
+
+function sanitiseSmartPhoto(ctx: SmartPhotoContext): SmartPhotoContext {
+  return {
+    supplierName: truncate(ctx.supplierName, 100),
+    processType: truncate(ctx.processType, 100),
+    scope: truncate(ctx.scope, 200),
+    auditorNote: truncate(ctx.auditorNote, 500),
+    nearestTranscript: truncate(ctx.nearestTranscript, 600),
+    imageBase64: ctx.imageBase64,
+  };
+}
+
+function buildSmartQuestionsPrompt(ctx: SmartQuestionsContext): string {
+  return `You are an expert Procurement Quality Engineer (PQE/SQE) listening quietly in real-time to an onsite supplier audit conversation.
+
+Supplier: ${ctx.supplierName}
+Audit Type: ${ctx.auditType}
+Scope: ${ctx.scope || "Manufacturing Line / Quality Process"}
+${ctx.checklistHighlights ? `Checklist Focus Areas:\n${ctx.checklistHighlights}\n` : ""}
+RECENT LIVE TRANSCRIPT:
+---
+${ctx.transcript}
+---
+
+Your task is to recommend ONLY the highest-priority 1 to 3 probing questions that the auditor may have forgotten to ask or needs to follow up on immediately.
+DO NOT overwhelm the auditor. Be concise, punchy, and highly practical.
+
+Prioritize each question as one of:
+- **CRITICAL** (Potential safety, CTF deviation, missing reaction plan, or unverified containment)
+- **IMPORTANT** (Missing objective records, calibration interval, or work instruction clarity)
+- **FOLLOW-UP** (Clarification on frequency, operator training, or maintenance)
+
+Format strictly as JSON with this structure:
+[
+  {
+    "priority": "CRITICAL",
+    "question": "How do you prevent operators from selecting the wrong rivet size?",
+    "reason": "Multiple rivet sizes are present at Station 2 with no poka-yoke fixture discussed.",
+    "suggestedAction": "Ask operator to demonstrate part selection and show setup verification record."
+  }
+]
+
+Respond ONLY with valid JSON array of 1 to 3 items. No conversational preamble.`;
+}
+
+function sanitiseSmartQuestions(ctx: SmartQuestionsContext): SmartQuestionsContext {
+  return {
+    supplierName: truncate(ctx.supplierName, 100),
+    auditType: truncate(ctx.auditType, 50),
+    scope: truncate(ctx.scope, 300),
+    checklistHighlights: truncate(ctx.checklistHighlights, 500),
+    transcript: truncate(ctx.transcript, 3000),
+  };
+}
+
+function buildSmartCoveragePrompt(ctx: SmartCoverageContext): string {
+  const qList = ctx.checklistQuestions
+    .slice(0, 30)
+    .map((q) => `ID: ${q.id} | REF: [${q.reference}] | REQ: ${q.text}`)
+    .join("\n");
+
+  return `You are a Procurement Quality Engineering AI auditor. Compare the live audit transcript against the audit checklist requirements.
+
+Supplier: ${ctx.supplierName}
+Audit Type: ${ctx.auditType}
+
+AUDIT CHECKLIST QUESTIONS:
+${qList}
+
+LIVE TRANSCRIPT:
+---
+${ctx.transcript}
+---
+
+For each checklist question, evaluate whether it was discussed and categorize its status as EXACTLY one of:
+- "COVERED" (Explicit evidence or detailed process control was verified in discussion)
+- "PARTIALLY_COVERED" (Mentioned or touched upon, but missing verification or deep dive)
+- "NOT_COVERED" (Not discussed or addressed in the transcript)
+- "OBJECTIVE_EVIDENCE_REQUIRED" (Discussed, but physical record/drawing/log must still be verified onsite)
+
+Format strictly as a JSON array with objects matching:
+[
+  {
+    "questionId": "<exact id>",
+    "questionRef": "<exact ref>",
+    "status": "COVERED" | "PARTIALLY_COVERED" | "NOT_COVERED" | "OBJECTIVE_EVIDENCE_REQUIRED",
+    "analysis": "<short 1-sentence explanation of what was said>",
+    "evidenceNeeded": "<what document or record is still needed, if any>"
+  }
+]
+
+Respond ONLY with valid JSON array. Do not invent question IDs.`;
+}
+
+function buildSmartSummaryPrompt(ctx: SmartSummaryContext): string {
+  const markersBlock = ctx.markers.length
+    ? ctx.markers.map((m) => `[${m.type} @ ${m.timestamp}] ${m.text}`).join("\n")
+    : "No manual markers placed.";
+
+  const photosBlock = ctx.photos.length
+    ? ctx.photos.map((p, i) => `${i + 1}. ${p.caption} ${p.process ? `(Process: ${p.process})` : ""} - Note: ${p.auditorNote || "None"}`).join("\n")
+    : "No photos recorded in session.";
+
+  return `You are a Lead Procurement Quality Engineer (PQE/SQE). Generate a comprehensive, professional, 13-point draft Audit Session Summary based on the live walkthrough and discussions.
+
+Supplier: ${ctx.supplierName} ${ctx.supplierSite ? `(${ctx.supplierSite})` : ""}
+Audit Type: ${ctx.auditType}
+Scope: ${ctx.scope || "Manufacturing Line Walkthrough"}
+Duration: ${Math.round(ctx.durationSec / 60)} minutes
+
+VOICE & TEXT MARKERS:
+${markersBlock}
+
+PHOTOS & CAPTURED EVIDENCE:
+${photosBlock}
+
+LIVE TRANSCRIPT:
+---
+${ctx.transcript}
+---
+
+Generate the structured AUDIT SESSION SUMMARY with these exact 13 sections:
+1. 📌 **Topics Discussed**
+2. 🏭 **Processes Observed**
+3. 📄 **Documents Reviewed**
+4. 🔬 **Objective Evidence Collected**
+5. 📷 **Photos & Physical Evidence Collected**
+6. 🔴 **Potential Findings (Draft / Non-Approved)**
+7. 🟡 **Observations & Discrepancies**
+8. ⭐ **Good Practices Identified**
+9. 🤝 **Supplier Commitments & Responsibilities**
+10. ❓ **Open Questions & Unresolved Items**
+11. 🔍 **Missing Objective Evidence**
+12. ⚡ **Action Items, Owners & Suggested Due Dates**
+13. 🗣 **Suggested Closing Meeting Discussion Points**
+
+Include clear bullet points under every section. Keep the tone factual, precise, and professional.
+Max 750 words.`;
+}
+
+function sanitiseSmartCoverage(ctx: SmartCoverageContext): SmartCoverageContext {
+  return {
+    supplierName: truncate(ctx.supplierName, 100),
+    auditType: truncate(ctx.auditType, 50),
+    transcript: truncate(ctx.transcript, 4000),
+    checklistQuestions: (ctx.checklistQuestions ?? []).slice(0, 30).map((q) => ({
+      id: truncate(q.id, 50),
+      reference: truncate(q.reference, 30),
+      text: truncate(q.text, 250),
+    })),
+  };
+}
+
+function sanitiseSmartSummary(ctx: SmartSummaryContext): SmartSummaryContext {
+  return {
+    supplierName: truncate(ctx.supplierName, 100),
+    supplierSite: truncate(ctx.supplierSite, 100),
+    auditType: truncate(ctx.auditType, 50),
+    scope: truncate(ctx.scope, 300),
+    durationSec: Math.max(0, Number(ctx.durationSec) || 0),
+    transcript: truncate(ctx.transcript, 5000),
+    markers: (ctx.markers ?? []).slice(0, 20).map((m) => ({
+      type: truncate(m.type, 30),
+      text: truncate(m.text, 200),
+      timestamp: truncate(m.timestamp, 20),
+    })),
+    photos: (ctx.photos ?? []).slice(0, 20).map((p) => ({
+      caption: truncate(p.caption, 200),
+      auditorNote: truncate(p.auditorNote, 300),
+      process: truncate(p.process, 100),
+    })),
+    checklistCoverage: truncate(ctx.checklistCoverage, 1000),
+  };
+}
+
 function sanitisePpapReview(ctx: PpapReviewContext): PpapReviewContext {
   return {
     supplierName: truncate(ctx.supplierName, 100),
@@ -708,6 +1023,47 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         maxTokens = 1100;
         break;
       }
+      case "smart_notes": {
+        const p = buildSmartNotesPrompt(sanitiseSmartNotes(body.context as SmartNotesContext));
+        messages = [{ role: "user", content: p }];
+        maxTokens = 650;
+        break;
+      }
+      case "smart_photo_analysis": {
+        const ctx = sanitiseSmartPhoto(body.context as SmartPhotoContext);
+        const p = buildSmartPhotoPrompt(ctx);
+        if (ctx.imageBase64 && ctx.imageBase64.length <= 5_000_000) {
+          messages = [{
+            role: "user",
+            content: [
+              { type: "text", text: p },
+              { type: "image_url", image_url: { url: ctx.imageBase64, detail: "low" } },
+            ],
+          }];
+        } else {
+          messages = [{ role: "user", content: p }];
+        }
+        maxTokens = 350;
+        break;
+      }
+      case "smart_questions": {
+        const p = buildSmartQuestionsPrompt(sanitiseSmartQuestions(body.context as SmartQuestionsContext));
+        messages = [{ role: "user", content: p }];
+        maxTokens = 450;
+        break;
+      }
+      case "smart_coverage": {
+        const p = buildSmartCoveragePrompt(sanitiseSmartCoverage(body.context as SmartCoverageContext));
+        messages = [{ role: "user", content: p }];
+        maxTokens = 850;
+        break;
+      }
+      case "smart_session_summary": {
+        const p = buildSmartSummaryPrompt(sanitiseSmartSummary(body.context as SmartSummaryContext));
+        messages = [{ role: "user", content: p }];
+        maxTokens = 1100;
+        break;
+      }
       default:
         return NextResponse.json({ error: "Unknown mode" }, { status: 400 });
     }
@@ -716,8 +1072,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Choose model — vision modes use gpt-4o, text-only use gpt-4o-mini
-  const isVisionMode = body.mode === "drawing" || body.mode === "ocr";
-  const model = isVisionMode ? "gpt-4o" : "gpt-4o-mini";
+  const hasImage = (body.mode === "smart_photo_analysis" && Boolean((body.context as SmartPhotoContext).imageBase64)) || body.mode === "drawing" || body.mode === "ocr";
+  const model = hasImage ? "gpt-4o" : "gpt-4o-mini";
 
   // Call OpenAI — API key stays server-side
   let suggestion: string;

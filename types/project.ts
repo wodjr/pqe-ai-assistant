@@ -323,6 +323,108 @@ export interface PpapPartReview {
 // Storage export package (for backup / restore)
 // ---------------------------------------------------------------------------
 
+export type VoiceMarkerType =
+  | "POTENTIAL_FINDING"
+  | "PQE_NOTE"
+  | "TAKE_ACTION"
+  | "FOLLOW_UP"
+  | "GOOD_PRACTICE"
+  | "NEED_EVIDENCE";
+
+export interface VoiceMarker {
+  id: string;
+  timestamp: string; // e.g. "10:42" or ISO
+  timestampSec: number;
+  type: VoiceMarkerType;
+  text: string;
+}
+
+export interface TranscriptSegment {
+  id: string;
+  timestamp: string;
+  timestampSec: number;
+  text: string;
+  isFinal: boolean;
+  speaker?: string;
+}
+
+export type SmartNoteCategory =
+  | "STATEMENT"
+  | "COMMITMENT"
+  | "PROCESS_CONTROL"
+  | "DOCUMENT_MENTIONED"
+  | "RISK_PROBLEM"
+  | "FOLLOW_UP";
+
+export type SmartQuestionPriority = "CRITICAL" | "IMPORTANT" | "FOLLOW_UP";
+
+export interface SmartAuditorPrompt {
+  id: string;
+  priority: SmartQuestionPriority;
+  question: string;
+  reason: string;
+  suggestedAction?: string;
+  relatedRequirement?: string;
+  timestamp: string;
+  timestampSec: number;
+  dismissed?: boolean;
+}
+
+export type ChecklistCoverageStatus =
+  | "COVERED"
+  | "PARTIALLY_COVERED"
+  | "NOT_COVERED"
+  | "OBJECTIVE_EVIDENCE_REQUIRED";
+
+export interface SmartChecklistCoverageItem {
+  questionId: string;
+  questionRef: string;
+  questionText: string;
+  status: ChecklistCoverageStatus;
+  analysis: string;
+  evidenceNeeded?: string;
+}
+
+export interface SmartAiNote {
+  id: string;
+  timestampSec: number;
+  category: SmartNoteCategory;
+  note: string;
+}
+
+export interface SessionPhoto {
+  id: string;
+  evidenceId: string;
+  blobKey: string;
+  timestamp: string;
+  timestampSec: number;
+  caption: string;
+  auditorNote: string;
+  relatedQuestionId?: string;
+  relatedProcess?: string;
+  aiSuggestedRisk?: string;
+  aiSuggestedQuestion?: string;
+}
+
+export interface SmartAuditSession {
+  id: string;
+  auditId: string;
+  title: string;
+  startedAt: string;
+  endedAt: string | null;
+  status: "RECORDING" | "PAUSED" | "COMPLETED";
+  durationSec: number;
+  transcriptSegments: TranscriptSegment[];
+  markers: VoiceMarker[];
+  photos: SessionPhoto[];
+  aiNotes: SmartAiNote[];
+  prompts?: SmartAuditorPrompt[];
+  coverage?: SmartChecklistCoverageItem[];
+  endSessionSummary?: string;
+  lastAiAnalysisSec?: number;
+  updatedAt: string;
+}
+
 export interface AuditExportPackage {
   exportedAt: string;
   appVersion: string;
@@ -336,6 +438,7 @@ export interface AuditExportPackage {
   cars: CAR[];
   report: AuditReport | null;
   ppapReviews: PpapPartReview[];
+  smartSessions?: SmartAuditSession[];
 }
 
 // ---------------------------------------------------------------------------

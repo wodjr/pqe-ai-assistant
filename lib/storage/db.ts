@@ -23,10 +23,11 @@ import type {
   CAR,
   AuditReport,
   PpapPartReview,
+  SmartAuditSession,
 } from "@/types/project";
 
 const DB_NAME = "pqe-ai-assistant";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export type StoreNames =
   | "checklists"
@@ -38,7 +39,8 @@ export type StoreNames =
   | "cars"
   | "reports"
   | "blobs"
-  | "ppapReviews";
+  | "ppapReviews"
+  | "smartSessions";
 
 let _db: IDBPDatabase | null = null;
 
@@ -90,6 +92,11 @@ export async function getDB(): Promise<IDBPDatabase> {
       if (!db.objectStoreNames.contains("ppapReviews")) {
         const pr = db.createObjectStore("ppapReviews", { keyPath: "id" });
         pr.createIndex("by_audit", "auditId");
+      }
+      // Smart audit live note-taker sessions (added in DB_VERSION 3)
+      if (!db.objectStoreNames.contains("smartSessions")) {
+        const ss = db.createObjectStore("smartSessions", { keyPath: "id" });
+        ss.createIndex("by_audit", "auditId");
       }
     },
   });
@@ -318,6 +325,12 @@ export async function deleteAuditCascade(auditId: string): Promise<void> {
     await db.delete("ppapReviews", pr.id);
   }
 
+  // Delete Smart Sessions for this audit
+  const sessionList = await db.getAllFromIndex("smartSessions", "by_audit", auditId);
+  for (const ss of sessionList) {
+    await db.delete("smartSessions", ss.id);
+  }
+
   const tx = db.transaction(
     ["audits", "supplierResponses", "verifications", "findings", "cars", "reports"],
     "readwrite"
@@ -370,6 +383,30 @@ export async function deletePpapReview(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Smart Audit Sessions
+// ---------------------------------------------------------------------------
+
+export async function saveSmartSession(session: SmartAuditSession): Promise<void> {
+  const db = await getDB();
+  await db.put("smartSessions", session);
+}
+
+export async function getSmartSession(id: string): Promise<SmartAuditSession | undefined> {
+  const db = await getDB();
+  return db.get("smartSessions", id);
+}
+
+export async function getSmartSessionsByAudit(auditId: string): Promise<SmartAuditSession[]> {
+  const db = await getDB();
+  return db.getAllFromIndex("smartSessions", "by_audit", auditId);
+}
+
+export async function deleteSmartSession(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete("smartSessions", id);
+}
+
+// ---------------------------------------------------------------------------
 // Factory reset
 // ---------------------------------------------------------------------------
 
@@ -386,6 +423,7 @@ export async function factoryReset(): Promise<void> {
     "reports",
     "blobs",
     "ppapReviews",
+    "smartSessions",
   ];
   const tx = db.transaction(stores, "readwrite");
   await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
