@@ -15,9 +15,9 @@ import { useState } from "react";
 
 interface Props {
   suggestion: string | null;
-  loading: boolean;
-  error: string | null;
-  onRequest: () => void;
+  loading?: boolean;
+  error?: string | null;
+  onRequest?: () => void;
   buttonLabel?: string;
   /** Optional: rendered after the suggestion text, e.g. a "Use as draft" button */
   action?: React.ReactNode;
@@ -25,8 +25,8 @@ interface Props {
 
 export default function AISuggestionBox({
   suggestion,
-  loading,
-  error,
+  loading = false,
+  error = null,
   onRequest,
   buttonLabel = "Get AI Suggestion",
   action,
