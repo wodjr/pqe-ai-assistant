@@ -18,6 +18,11 @@ body {
   color: #1e293b;
 }
 
+.dark body {
+  background-color: #0b1120;
+  color: #f1f5f9;
+}
+
 /* ─── Scrollbar ─────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
@@ -54,11 +59,21 @@ body {
   background: #ffffff;
   color: #334155;
   text-decoration: none;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .btn-secondary:hover {
   background: #f1f5f9;
   border-color: #94a3b8;
+}
+
+.dark .btn-secondary {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+.dark .btn-secondary:hover {
+  background: #334155;
+  border-color: #475569;
 }
 
 /* ─── Status badges ──────────────────────────────────────────────────────── */
