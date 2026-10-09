@@ -32,29 +32,43 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      const [a, c] = await Promise.all([listAudits(), listChecklists()]);
-      const sorted = [...a].sort(
-        (x, y) => (STATUS_ORDER[x.status] ?? 9) - (STATUS_ORDER[y.status] ?? 9)
-      );
-      setAudits(sorted);
-      setChecklists(c);
-      setCurrentId(getCurrentAuditId());
+      try {
+        const [a, c] = await Promise.all([
+          listAudits().catch(() => []),
+          listChecklists().catch(() => []),
+        ]);
+        const sorted = [...(a || [])].sort(
+          (x, y) => (STATUS_ORDER[x.status] ?? 9) - (STATUS_ORDER[y.status] ?? 9)
+        );
+        setAudits(sorted);
+        setChecklists(c || []);
+        setCurrentId(getCurrentAuditId());
 
-      // Detect overdue CARs across all audits
-      const today = new Date().toISOString().slice(0, 10);
-      const overdue: { car: CAR; auditName: string }[] = [];
-      await Promise.all(
-        a.map(async (audit) => {
-          const cars = await getCARsByAudit(audit.id);
-          for (const car of cars) {
-            if (!car.isAuditorVerifiedClosed && car.dueDate && car.dueDate < today) {
-              overdue.push({ car, auditName: `${audit.supplierName} — ${audit.supplierSite}` });
-            }
-          }
-        })
-      );
-      setOverdueCARs(overdue);
-      setLoading(false);
+        // Detect overdue CARs across all audits
+        const today = new Date().toISOString().slice(0, 10);
+        const overdue: { car: CAR; auditName: string }[] = [];
+        if (a && a.length > 0) {
+          await Promise.all(
+            a.map(async (audit) => {
+              try {
+                const cars = await getCARsByAudit(audit.id);
+                for (const car of cars) {
+                  if (!car.isAuditorVerifiedClosed && car.dueDate && car.dueDate < today) {
+                    overdue.push({ car, auditName: `${audit.supplierName} — ${audit.supplierSite}` });
+                  }
+                }
+              } catch {
+                // Ignore single audit CAR load failures
+              }
+            })
+          );
+        }
+        setOverdueCARs(overdue);
+      } catch (e) {
+        console.error("Dashboard failed to load:", e);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, []);
