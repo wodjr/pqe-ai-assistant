@@ -40,6 +40,7 @@ import type {
   SmartQuestionPriority,
   SmartChecklistCoverageItem,
   ChecklistCoverageStatus,
+  SpeakerProfile,
 } from "@/types/project";
 import {
   getSmartQuestionsSuggestion,
@@ -162,6 +163,18 @@ export default function SmartAuditPage() {
   const [customMarkerText, setCustomMarkerText] = useState("");
   const [customMarkerType, setCustomMarkerType] = useState<VoiceMarkerType>("PQE_NOTE");
   const [showMarkerInput, setShowMarkerInput] = useState(false);
+
+  // Speaker Diarization & Playback State
+  const [speakers, setSpeakers] = useState<SpeakerProfile[]>([
+    { id: "speaker_1", name: "Lead Auditor", role: "Auditor", color: "blue" },
+    { id: "speaker_2", name: "Supplier Contact", role: "Supplier QA", color: "emerald" },
+  ]);
+  const [editingSpeaker, setEditingSpeaker] = useState<{ segmentId: string; speakerId: string; currentName: string; currentRole: string } | null>(null);
+  const [newSpeakerName, setNewSpeakerName] = useState("");
+  const [newSpeakerRole, setNewSpeakerRole] = useState("Supplier QA");
+  const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const recordedAudioChunksRef = useRef<Blob[]>([]);
 
   // Refs for audio & speech recognition
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -307,7 +320,39 @@ export default function SmartAuditPage() {
       const mimeType = getSupportedAudioMimeType();
       const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mr;
+      recordedAudioChunksRef.current = [];
+
+      mr.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedAudioChunksRef.current.push(e.data);
+        }
+      };
+
+      mr.onstop = async () => {
+        if (recordedAudioChunksRef.current.length > 0 && sessionRef.current) {
+          const completeAudioBlob = new Blob(recordedAudioChunksRef.current, {
+            type: mimeType || "audio/webm",
+          });
+          const audioKey = `smart_audio_${sessionRef.current.id}`;
+          await saveBlob(audioKey, completeAudioBlob);
+          if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+          const url = URL.createObjectURL(completeAudioBlob);
+          setActiveAudioUrl(url);
+          const updated: SmartAuditSession = {
+            ...sessionRef.current,
+            audioBlobKey: audioKey,
+          };
+          persistSession(updated);
+        }
+      };
+
       mr.start(1000);
+
+      // Default speaker profiles with auditor + contact info
+      const defaultSpeakers: SpeakerProfile[] = [
+        { id: "speaker_1", name: audit?.leadAuditor || "Lead Auditor", role: "Lead Auditor", color: "blue" },
+        { id: "speaker_2", name: audit?.supplierContact || "Supplier QA", role: "Supplier QA", color: "emerald" },
+      ];
 
       // Create new session if none exists
       let currentSession = sessionRef.current;
@@ -320,20 +365,24 @@ export default function SmartAuditPage() {
           endedAt: null,
           status: "RECORDING",
           durationSec: 0,
+          speakers: defaultSpeakers,
           transcriptSegments: [],
           markers: [],
           photos: [],
           aiNotes: [],
           updatedAt: new Date().toISOString(),
         };
+        setSpeakers(defaultSpeakers);
         await persistSession(currentSession);
         setElapsedSeconds(0);
       } else {
         currentSession = {
           ...currentSession,
           status: "RECORDING",
+          speakers: currentSession.speakers || defaultSpeakers,
           updatedAt: new Date().toISOString(),
         };
+        if (currentSession.speakers) setSpeakers(currentSession.speakers);
         await persistSession(currentSession);
       }
 
@@ -381,12 +430,37 @@ export default function SmartAuditPage() {
 
           if (final.trim().length > 0 && sessionRef.current) {
             const currentSec = sessionRef.current.durationSec;
+            const textLower = final.trim().toLowerCase();
+
+            // Automatic heuristic speaker diarization
+            // If text starts with question or marker words, attribute to Auditor (Speaker 1)
+            // If text starts with "we", "yes", "our", "it is", "currently", attribute to Supplier (Speaker 2)
+            const isAuditorClue = textLower.startsWith("pqe") ||
+              textLower.startsWith("can you") ||
+              textLower.startsWith("could you") ||
+              textLower.startsWith("please show") ||
+              textLower.startsWith("where is") ||
+              textLower.startsWith("what is the") ||
+              textLower.startsWith("how do you") ||
+              textLower.includes("finding") ||
+              textLower.includes("observation");
+
+            const activeSpeakers = sessionRef.current.speakers || speakers;
+            const defaultSpeaker = isAuditorClue
+              ? (activeSpeakers.find((s) => s.id === "speaker_1") || activeSpeakers[0])
+              : (activeSpeakers.find((s) => s.id === "speaker_2") || activeSpeakers[1] || activeSpeakers[0]);
+
             const newSegment: TranscriptSegment = {
               id: nanoid(),
               timestamp: formatDuration(currentSec),
               timestampSec: currentSec,
+              audioStartSec: Math.max(0, currentSec - 4),
+              audioEndSec: currentSec,
               text: final.trim(),
               isFinal: true,
+              speakerId: defaultSpeaker.id,
+              speakerName: defaultSpeaker.name,
+              speakerRole: defaultSpeaker.role,
             };
 
             const updatedSession: SmartAuditSession = {
@@ -604,7 +678,9 @@ export default function SmartAuditPage() {
   // Trigger Smart AI Notes Analysis
   const runAiNotesAnalysis = async () => {
     if (!session || !audit) return;
-    const allText = session.transcriptSegments.map((s) => `[${s.timestamp}] ${s.text}`).join("\n");
+    const allText = session.transcriptSegments
+      .map((s) => `[${s.speakerName || "Speaker"} (${s.speakerRole || "Participant"}) @ ${s.timestamp}] ${s.text}`)
+      .join("\n");
     if (allText.trim().length === 0) {
       setAiNotesError("No spoken transcript captured yet. Speak or record audio first.");
       return;
@@ -707,7 +783,9 @@ export default function SmartAuditPage() {
   // Trigger End of Session Smart Summary (v0.5C)
   const runEndSessionSummary = async () => {
     if (!session || !audit) return;
-    const allText = session.transcriptSegments.map((s) => `[${s.timestamp}] ${s.text}`).join("\n");
+    const allText = session.transcriptSegments
+      .map((s) => `[${s.speakerName || "Speaker"} (${s.speakerRole || "Participant"}) @ ${s.timestamp}] ${s.text}`)
+      .join("\n");
     if (allText.trim().length === 0) {
       setSummaryError("No spoken discussion recorded in this session.");
       return;
@@ -1302,18 +1380,76 @@ export default function SmartAuditPage() {
                       </div>
                     )}
 
-                    {session?.transcriptSegments.map((seg) => (
-                      <div
-                        key={seg.id}
-                        className="p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-lg border border-slate-200/80 text-sm text-slate-800 transition"
-                      >
-                        <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                          <span className="font-mono font-medium text-slate-500">{seg.timestamp}</span>
-                          <span className="text-[11px] text-slate-400">Auditor / Supplier</span>
+                    {session?.transcriptSegments.map((seg) => {
+                      const isAuditor = seg.speakerId === "speaker_1" || (seg.speakerRole && seg.speakerRole.toLowerCase().includes("auditor"));
+                      return (
+                        <div
+                          key={seg.id}
+                          className={`p-3 rounded-xl border text-sm transition ${
+                            isAuditor
+                              ? "bg-blue-50/40 border-blue-200/80 text-slate-900"
+                              : "bg-emerald-50/30 border-emerald-200/70 text-slate-900"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-xs mb-1.5 gap-2">
+                            <div className="flex items-center gap-2">
+                              {/* Interactive Speaker Badge */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSpeaker({
+                                    segmentId: seg.id,
+                                    speakerId: seg.speakerId || "speaker_1",
+                                    currentName: seg.speakerName || "Speaker",
+                                    currentRole: seg.speakerRole || "Participant",
+                                  });
+                                  setNewSpeakerName(seg.speakerName || "");
+                                  setNewSpeakerRole(seg.speakerRole || "Supplier QA");
+                                }}
+                                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
+                                  isAuditor
+                                    ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                                    : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                }`}
+                                title="Click to rename speaker or change role"
+                              >
+                                <span>👤</span>
+                                <span>{seg.speakerName || (isAuditor ? "Lead Auditor" : "Supplier Contact")}</span>
+                                <span className="opacity-60 text-[10px]">✎</span>
+                              </button>
+
+                              {seg.speakerRole && (
+                                <span className="text-[10px] text-slate-400 uppercase font-mono tracking-tight">
+                                  [{seg.speakerRole}]
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {/* Audio Snippet Playback Button */}
+                              {activeAudioUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (audioPlayerRef.current) {
+                                      audioPlayerRef.current.currentTime = seg.audioStartSec || seg.timestampSec;
+                                      audioPlayerRef.current.play();
+                                    }
+                                  }}
+                                  className="text-[11px] text-slate-500 hover:text-blue-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs hover:shadow"
+                                  title="Play audio snippet for this sentence"
+                                >
+                                  <span>▶</span>
+                                  <span>Listen</span>
+                                </button>
+                              )}
+                              <span className="font-mono text-slate-400 text-[11px]">{seg.timestamp}</span>
+                            </div>
+                          </div>
+                          <p className="leading-relaxed pl-1">{seg.text}</p>
                         </div>
-                        <p className="leading-relaxed">{seg.text}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {/* Active Interim Utterance */}
                     {interimTranscript && (
@@ -1790,6 +1926,136 @@ export default function SmartAuditPage() {
                 className="px-4 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
               >
                 {photoSaving ? "Saving..." : "Save Photo Evidence"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden Audio Player for Snippet Playback */}
+      <audio ref={audioPlayerRef} src={activeAudioUrl || undefined} className="hidden" />
+
+      {/* ── Speaker Renaming & Attribution Modal ───────────────────────── */}
+      {editingSpeaker && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-5 border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">👤</span>
+                <h3 className="font-bold text-sm text-slate-800">Identify / Rename Speaker</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingSpeaker(null)}
+                className="text-slate-400 hover:text-slate-600 text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Speaker Name
+                </label>
+                <input
+                  type="text"
+                  value={newSpeakerName}
+                  onChange={(e) => setNewSpeakerName(e.target.value)}
+                  placeholder="e.g. Richard, Mr. Han, Operator Xiao"
+                  className="w-full border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Role / Designation
+                </label>
+                <select
+                  value={newSpeakerRole}
+                  onChange={(e) => setNewSpeakerRole(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Lead Auditor">Lead Auditor (You)</option>
+                  <option value="Auditor">Co-Auditor</option>
+                  <option value="Supplier QA">Supplier QA / Quality Director</option>
+                  <option value="Plant Manager">Plant / Production Manager</option>
+                  <option value="Process Engineer">Process / Manufacturing Engineer</option>
+                  <option value="Line Supervisor">Line Supervisor</option>
+                  <option value="Operator">Machine Operator / Inspector</option>
+                  <option value="Management">Supplier Executive / GM</option>
+                </select>
+              </div>
+
+              {/* Quick pre-populate tags */}
+              <div className="space-y-1">
+                <span className="text-[10px] text-slate-400 font-medium">Quick suggestions:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[audit?.leadAuditor || "Auditor", audit?.supplierContact || "Supplier QA", "Line Supervisor", "Machine Operator"].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => setNewSpeakerName(suggestion)}
+                      className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded border border-slate-200"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setEditingSpeaker(null)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!editingSpeaker || !sessionRef.current) return;
+                  const targetSpeakerId = editingSpeaker.speakerId;
+                  const finalName = newSpeakerName.trim() || editingSpeaker.currentName;
+                  const finalRole = newSpeakerRole.trim() || editingSpeaker.currentRole;
+
+                  // Update session speakers registry
+                  const updatedSpeakers = (sessionRef.current.speakers || speakers).map((s) => {
+                    if (s.id === targetSpeakerId) {
+                      return { ...s, name: finalName, role: finalRole };
+                    }
+                    return s;
+                  });
+
+                  // Update all transcript segments assigned to this speaker
+                  const updatedSegments = sessionRef.current.transcriptSegments.map((seg) => {
+                    if (seg.speakerId === targetSpeakerId || seg.id === editingSpeaker.segmentId) {
+                      return {
+                        ...seg,
+                        speakerId: targetSpeakerId,
+                        speakerName: finalName,
+                        speakerRole: finalRole,
+                      };
+                    }
+                    return seg;
+                  });
+
+                  const updatedSession: SmartAuditSession = {
+                    ...sessionRef.current,
+                    speakers: updatedSpeakers,
+                    transcriptSegments: updatedSegments,
+                    updatedAt: new Date().toISOString(),
+                  };
+
+                  setSpeakers(updatedSpeakers);
+                  persistSession(updatedSession);
+                  setEditingSpeaker(null);
+                }}
+                className="px-4 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 shadow-sm"
+              >
+                Update Speaker Globally
               </button>
             </div>
           </div>

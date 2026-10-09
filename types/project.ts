@@ -339,13 +339,24 @@ export interface VoiceMarker {
   text: string;
 }
 
+export interface SpeakerProfile {
+  id: string; // e.g. "speaker_1", "speaker_2"
+  name: string; // e.g. "Richard", "Mr. Han"
+  role?: string; // e.g. "Lead Auditor", "Supplier QA Manager", "Line Supervisor", "Operator"
+  color?: string; // e.g. "blue", "indigo", "emerald", "amber", "rose"
+}
+
 export interface TranscriptSegment {
   id: string;
   timestamp: string;
   timestampSec: number;
+  audioStartSec?: number;
+  audioEndSec?: number;
   text: string;
   isFinal: boolean;
-  speaker?: string;
+  speakerId?: string; // e.g. "speaker_1"
+  speakerName?: string; // e.g. "Lead Auditor", "Mr. Han"
+  speakerRole?: string;
 }
 
 export type SmartNoteCategory =
@@ -414,6 +425,8 @@ export interface SmartAuditSession {
   endedAt: string | null;
   status: "RECORDING" | "PAUSED" | "COMPLETED";
   durationSec: number;
+  audioBlobKey?: string;
+  speakers?: SpeakerProfile[];
   transcriptSegments: TranscriptSegment[];
   markers: VoiceMarker[];
   photos: SessionPhoto[];
