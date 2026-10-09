@@ -279,6 +279,11 @@ export async function saveFinding(finding: Finding): Promise<void> {
   await db.put("findings", finding);
 }
 
+export async function listFindings(): Promise<Finding[]> {
+  const db = await getDB();
+  return db.getAll("findings");
+}
+
 export async function getFindingsByAudit(auditId: string): Promise<Finding[]> {
   const db = await getDB();
   return db.getAllFromIndex("findings", "by_audit", auditId);
@@ -301,6 +306,11 @@ export async function deleteFinding(id: string): Promise<void> {
 export async function saveCAR(car: CAR): Promise<void> {
   const db = await getDB();
   await db.put("cars", car);
+}
+
+export async function listCARs(): Promise<CAR[]> {
+  const db = await getDB();
+  return db.getAll("cars");
 }
 
 export async function getCARsByAudit(auditId: string): Promise<CAR[]> {

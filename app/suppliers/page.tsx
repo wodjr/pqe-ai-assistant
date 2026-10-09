@@ -6,7 +6,7 @@
  * overdue CARs, and audit history. Read-only summary view.
  */
 import { useEffect, useState } from "react";
-import { listAudits, getFindingsByAudit, getCARsByAudit } from "@/lib/storage/db";
+import { listAudits, listFindings, listCARs } from "@/lib/storage/db";
 import { formatDate } from "@/lib/utils/format";
 import type { Audit, Finding, CAR } from "@/types/project";
 import PageHeader from "@/components/PageHeader";
@@ -46,63 +46,95 @@ export default function SuppliersPage() {
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 1500);
+
     async function load() {
-      const audits = await listAudits();
-      // Group by supplier name+site
-      const map = new Map<string, Audit[]>();
-      for (const a of audits) {
-        const key = `${a.supplierName}|${a.supplierSite}`;
-        map.set(key, [...(map.get(key) ?? []), a]);
+      try {
+        // Fetch all in a single batch query (O(1) transactions instead of O(N*M))
+        const [audits, allFindings, allCARs] = await Promise.all([
+          listAudits().catch(() => []),
+          listFindings().catch(() => []),
+          listCARs().catch(() => []),
+        ]);
+
+        if (!isMounted) return;
+
+        // Group findings and CARs by auditId in memory
+        const findingsByAudit = new Map<string, Finding[]>();
+        for (const f of allFindings) {
+          const list = findingsByAudit.get(f.auditId) ?? [];
+          list.push(f);
+          findingsByAudit.set(f.auditId, list);
+        }
+
+        const carsByAudit = new Map<string, CAR[]>();
+        for (const c of allCARs) {
+          const list = carsByAudit.get(c.auditId) ?? [];
+          list.push(c);
+          carsByAudit.set(c.auditId, list);
+        }
+
+        // Group audits by supplier name+site
+        const map = new Map<string, Audit[]>();
+        for (const a of audits) {
+          const key = `${a.supplierName}|${a.supplierSite}`;
+          map.set(key, [...(map.get(key) ?? []), a]);
+        }
+
+        const built: SupplierProfile[] = [];
+        for (const [key, supplierAudits] of map) {
+          const [name, site] = key.split("|");
+          const supplierFindings: Finding[] = [];
+          const supplierCARs: CAR[] = [];
+
+          for (const a of supplierAudits) {
+            supplierFindings.push(...(findingsByAudit.get(a.id) ?? []));
+            supplierCARs.push(...(carsByAudit.get(a.id) ?? []));
+          }
+
+          const major = supplierFindings.filter((f) => f.classification === "MAJOR").length;
+          const minor = supplierFindings.filter((f) => f.classification === "MINOR").length;
+          const obs   = supplierFindings.filter((f) => f.classification === "OBSERVATION").length;
+          const openCARs    = supplierCARs.filter((c) => !c.isAuditorVerifiedClosed).length;
+          const overdueCARs = supplierCARs.filter((c) => c.status === "OVERDUE").length;
+          const lastDate = supplierAudits
+            .flatMap((a) => a.auditDates)
+            .sort()
+            .at(-1) ?? "";
+
+          built.push({
+            name,
+            site,
+            audits: supplierAudits,
+            totalMajor: major,
+            totalMinor: minor,
+            totalObservations: obs,
+            openCARs,
+            overdueCARs,
+            lastAuditDate: lastDate,
+            riskScore: calcRisk(major, overdueCARs),
+          });
+        }
+
+        // Sort HIGH → LOW
+        const ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+        built.sort((a, b) => ORDER[a.riskScore] - ORDER[b.riskScore]);
+        if (isMounted) setProfiles(built);
+      } catch (err) {
+        console.error("Failed to load supplier risk dashboard:", err);
+      } finally {
+        clearTimeout(safetyTimer);
+        if (isMounted) setLoading(false);
       }
-
-      const built: SupplierProfile[] = [];
-      for (const [key, supplierAudits] of map) {
-        const [name, site] = key.split("|");
-        // Load all findings and CARs for this supplier's audits
-        const allFindings: Finding[] = [];
-        const allCARs: CAR[] = [];
-        await Promise.all(
-          supplierAudits.map(async (a) => {
-            const [fi, ca] = await Promise.all([
-              getFindingsByAudit(a.id),
-              getCARsByAudit(a.id),
-            ]);
-            allFindings.push(...fi);
-            allCARs.push(...ca);
-          })
-        );
-
-        const major = allFindings.filter((f) => f.classification === "MAJOR").length;
-        const minor = allFindings.filter((f) => f.classification === "MINOR").length;
-        const obs   = allFindings.filter((f) => f.classification === "OBSERVATION").length;
-        const openCARs    = allCARs.filter((c) => !c.isAuditorVerifiedClosed).length;
-        const overdueCARs = allCARs.filter((c) => c.status === "OVERDUE").length;
-        const lastDate = supplierAudits
-          .flatMap((a) => a.auditDates)
-          .sort()
-          .at(-1) ?? "";
-
-        built.push({
-          name,
-          site,
-          audits: supplierAudits,
-          totalMajor: major,
-          totalMinor: minor,
-          totalObservations: obs,
-          openCARs,
-          overdueCARs,
-          lastAuditDate: lastDate,
-          riskScore: calcRisk(major, overdueCARs),
-        });
-      }
-
-      // Sort HIGH → LOW
-      const ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-      built.sort((a, b) => ORDER[a.riskScore] - ORDER[b.riskScore]);
-      setProfiles(built);
-      setLoading(false);
     }
     load();
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   if (loading) return <LoadingSpinner />;

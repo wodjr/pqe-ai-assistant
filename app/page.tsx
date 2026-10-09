@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { listAudits, listChecklists, getCARsByAudit } from "@/lib/storage/db";
+import { listAudits, listChecklists, listCARs } from "@/lib/storage/db";
 import { getCurrentAuditId, setCurrentAuditId } from "@/lib/storage/localStorage";
 import { formatDate } from "@/lib/utils/format";
 import type { Audit, ChecklistTemplate, CAR } from "@/types/project";
@@ -39,9 +39,10 @@ export default function DashboardPage() {
       }, 2500);
 
       try {
-        const [a, c] = await Promise.all([
+        const [a, c, allCARs] = await Promise.all([
           listAudits().catch(() => []),
           listChecklists().catch(() => []),
+          listCARs().catch(() => []),
         ]);
         if (!isMounted) return;
         const sorted = [...(a || [])].sort(
@@ -51,24 +52,19 @@ export default function DashboardPage() {
         setChecklists(c || []);
         setCurrentId(getCurrentAuditId());
 
-        // Detect overdue CARs across all audits
+        // Build audit map for O(1) lookup
+        const auditMap = new Map<string, Audit>();
+        (a || []).forEach((aud) => auditMap.set(aud.id, aud));
+
+        // Detect overdue CARs across all audits in O(N) memory
         const today = new Date().toISOString().slice(0, 10);
         const overdue: { car: CAR; auditName: string }[] = [];
-        if (a && a.length > 0) {
-          await Promise.all(
-            a.map(async (audit) => {
-              try {
-                const cars = await getCARsByAudit(audit.id);
-                for (const car of cars) {
-                  if (!car.isAuditorVerifiedClosed && car.dueDate && car.dueDate < today) {
-                    overdue.push({ car, auditName: `${audit.supplierName} — ${audit.supplierSite}` });
-                  }
-                }
-              } catch {
-                // Ignore single audit CAR load failures
-              }
-            })
-          );
+        for (const car of allCARs || []) {
+          if (!car.isAuditorVerifiedClosed && car.dueDate && car.dueDate < today) {
+            const aud = auditMap.get(car.auditId);
+            const auditName = aud ? `${aud.supplierName} — ${aud.supplierSite}` : "Audit";
+            overdue.push({ car, auditName });
+          }
         }
         if (isMounted) setOverdueCARs(overdue);
       } catch (e) {
