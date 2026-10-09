@@ -179,41 +179,59 @@ export default function SmartAuditPage() {
 
   // Load audit & checklist
   useEffect(() => {
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 2000);
+
     async function load() {
-      const a = await getAudit(auditId);
-      if (!a) {
-        setLoading(false);
-        return;
-      }
-      setAudit(a);
-
-      const cl = await getChecklist(a.checklistTemplateId);
-      setChecklist(cl ?? null);
-
-      // Check for any existing active or recent sessions
-      const existing = await getSmartSessionsByAudit(auditId);
-      if (existing.length > 0) {
-        // pick most recent session
-        const recent = existing[existing.length - 1];
-        if (recent.status !== "COMPLETED") {
-          setSession(recent);
-          setElapsedSeconds(recent.durationSec);
-          setRecordingState(recent.status);
-          if (recent.prompts?.length) {
-            setPrompts(recent.prompts);
-          }
-          if (recent.coverage?.length) {
-            setCoverage(recent.coverage);
-          }
-          if (recent.endSessionSummary) {
-            setSessionSummary(recent.endSessionSummary);
-          }
-          setConsentGiven(true);
+      try {
+        const a = await getAudit(auditId);
+        if (!isMounted) return;
+        if (!a) {
+          setLoading(false);
+          return;
         }
+        setAudit(a);
+
+        const [cl, existing] = await Promise.all([
+          getChecklist(a.checklistTemplateId).catch(() => null),
+          getSmartSessionsByAudit(auditId).catch(() => []),
+        ]);
+
+        if (!isMounted) return;
+        setChecklist(cl ?? null);
+
+        if (existing && existing.length > 0) {
+          const recent = existing[existing.length - 1];
+          if (recent.status !== "COMPLETED") {
+            setSession(recent);
+            setElapsedSeconds(recent.durationSec);
+            setRecordingState(recent.status);
+            if (recent.prompts?.length) {
+              setPrompts(recent.prompts);
+            }
+            if (recent.coverage?.length) {
+              setCoverage(recent.coverage);
+            }
+            if (recent.endSessionSummary) {
+              setSessionSummary(recent.endSessionSummary);
+            }
+            setConsentGiven(true);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load smart session:", err);
+      } finally {
+        clearTimeout(safetyTimer);
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
     }
     load();
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, [auditId]);
 
   // Autosave helper to IndexedDB

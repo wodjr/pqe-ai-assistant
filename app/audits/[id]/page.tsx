@@ -63,23 +63,48 @@ export default function AuditDetailPage() {
   const [supplierReviewError, setSupplierReviewError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 2000);
+
     async function load() {
-      const a = await getAudit(id);
-      if (!a) { setLoading(false); return; }
-      setAudit(a);
-      setCurrentAuditId(id);
-      const [cl, sr, vr, fi, ca] = await Promise.all([
-        getChecklist(a.checklistTemplateId),
-        getSupplierResponsesByAudit(id),
-        getVerificationsByAudit(id),
-        getFindingsByAudit(id),
-        getCARsByAudit(id),
-      ]);
-      setChecklist(cl ?? null);
-      setStats({ responses: sr.length, verified: vr.filter((v) => v.isApproved).length, findings: fi.length, cars: ca.length });
-      setLoading(false);
+      try {
+        const a = await getAudit(id);
+        if (!isMounted) return;
+        if (!a) {
+          setLoading(false);
+          return;
+        }
+        setAudit(a);
+        setCurrentAuditId(id);
+        const [cl, sr, vr, fi, ca] = await Promise.all([
+          getChecklist(a.checklistTemplateId).catch(() => null),
+          getSupplierResponsesByAudit(id).catch(() => []),
+          getVerificationsByAudit(id).catch(() => []),
+          getFindingsByAudit(id).catch(() => []),
+          getCARsByAudit(id).catch(() => []),
+        ]);
+        if (!isMounted) return;
+        setChecklist(cl ?? null);
+        setStats({
+          responses: sr.length,
+          verified: vr.filter((v) => v.isApproved).length,
+          findings: fi.length,
+          cars: ca.length,
+        });
+      } catch (err) {
+        console.error("Failed to load audit hub:", err);
+      } finally {
+        clearTimeout(safetyTimer);
+        if (isMounted) setLoading(false);
+      }
     }
     load();
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, [id]);
 
   async function updateStatus(status: Audit["status"]) {

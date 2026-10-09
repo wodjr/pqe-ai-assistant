@@ -13,7 +13,6 @@
  */
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Workbook } from "exceljs";
 import { getAudit, getEvidenceByAudit, getPpapReviewsByAudit, savePpapReview, deletePpapReview } from "@/lib/storage/db";
 import { getAuditorName } from "@/lib/storage/localStorage";
 import { nanoid } from "@/lib/utils/nanoid";
@@ -106,6 +105,7 @@ function cellToString(v: unknown): string {
 
 async function extractExcelText(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
+  const { Workbook } = await import("exceljs");
   const wb = new Workbook();
   await wb.xlsx.load(buffer);
 
