@@ -46,6 +46,9 @@ let _db: IDBPDatabase | null = null;
 
 export async function getDB(): Promise<IDBPDatabase> {
   if (_db) return _db;
+  if (typeof window === "undefined") {
+    throw new Error("IndexedDB is only available in the browser.");
+  }
   _db = await openDB(DB_NAME, DB_VERSION, {
     upgrade(db) {
       // Keyed by record.id
@@ -98,6 +101,20 @@ export async function getDB(): Promise<IDBPDatabase> {
         const ss = db.createObjectStore("smartSessions", { keyPath: "id" });
         ss.createIndex("by_audit", "auditId");
       }
+    },
+    blocked() {
+      // Another tab has an older version open; reload to unblock
+      console.warn("IndexedDB upgrade blocked: Please close other tabs of this app.");
+    },
+    blocking() {
+      // This connection is blocking a newer version in another tab; close it
+      if (_db) {
+        _db.close();
+        _db = null;
+      }
+    },
+    terminated() {
+      _db = null;
     },
   });
   return _db;

@@ -31,12 +31,19 @@ export default function DashboardPage() {
   const [overdueCARs, setOverdueCARs] = useState<{ car: CAR; auditName: string }[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
     async function load() {
+      // Set safety timeout so page never stays stuck loading
+      const safetyTimer = setTimeout(() => {
+        if (isMounted) setLoading(false);
+      }, 2500);
+
       try {
         const [a, c] = await Promise.all([
           listAudits().catch(() => []),
           listChecklists().catch(() => []),
         ]);
+        if (!isMounted) return;
         const sorted = [...(a || [])].sort(
           (x, y) => (STATUS_ORDER[x.status] ?? 9) - (STATUS_ORDER[y.status] ?? 9)
         );
@@ -63,14 +70,18 @@ export default function DashboardPage() {
             })
           );
         }
-        setOverdueCARs(overdue);
+        if (isMounted) setOverdueCARs(overdue);
       } catch (e) {
         console.error("Dashboard failed to load:", e);
       } finally {
-        setLoading(false);
+        clearTimeout(safetyTimer);
+        if (isMounted) setLoading(false);
       }
     }
     load();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   function selectAudit(id: string) {
