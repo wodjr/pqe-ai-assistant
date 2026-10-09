@@ -35,7 +35,30 @@ export default function ChecklistsPage() {
   const [previewMode, setPreviewMode] = useState<"structured" | "raw">("structured");
 
   useEffect(() => {
-    listChecklists().then((c) => { setChecklists(c); setLoading(false); });
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 2500);
+
+    listChecklists()
+      .then((c) => {
+        if (isMounted) {
+          setChecklists(c || []);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        console.error("Failed to load checklists:", e);
+        if (isMounted) setLoading(false);
+      })
+      .finally(() => {
+        clearTimeout(safetyTimer);
+      });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   async function handleImport(file: File) {

@@ -44,12 +44,16 @@ export type StoreNames =
 
 let _db: IDBPDatabase | null = null;
 
+let _dbPromise: Promise<IDBPDatabase> | null = null;
+
 export async function getDB(): Promise<IDBPDatabase> {
   if (_db) return _db;
+  if (_dbPromise) return _dbPromise;
   if (typeof window === "undefined") {
     throw new Error("IndexedDB is only available in the browser.");
   }
-  _db = await openDB(DB_NAME, DB_VERSION, {
+
+  _dbPromise = openDB(DB_NAME, DB_VERSION, {
     upgrade(db) {
       // Keyed by record.id
       if (!db.objectStoreNames.contains("checklists")) {
@@ -103,11 +107,13 @@ export async function getDB(): Promise<IDBPDatabase> {
       }
     },
     blocked() {
-      // Another tab has an older version open; reload to unblock
-      console.warn("IndexedDB upgrade blocked: Please close other tabs of this app.");
+      console.warn("IndexedDB upgrade blocked: Closing old connection.");
+      if (_db) {
+        _db.close();
+        _db = null;
+      }
     },
     blocking() {
-      // This connection is blocking a newer version in another tab; close it
       if (_db) {
         _db.close();
         _db = null;
@@ -115,9 +121,19 @@ export async function getDB(): Promise<IDBPDatabase> {
     },
     terminated() {
       _db = null;
+      _dbPromise = null;
     },
-  });
-  return _db;
+  })
+    .then((database) => {
+      _db = database;
+      return database;
+    })
+    .catch((err) => {
+      _dbPromise = null;
+      throw err;
+    });
+
+  return _dbPromise;
 }
 
 // ---------------------------------------------------------------------------

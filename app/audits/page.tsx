@@ -20,11 +20,31 @@ export default function AuditsPage() {
   const [currentId, setCurrentId] = useState<string | null>(null);
 
   useEffect(() => {
-    listAudits().then((a) => {
-      setAudits(a.sort((x, y) => y.createdAt.localeCompare(x.createdAt)));
-      setCurrentId(getCurrentAuditId());
-      setLoading(false);
-    });
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 2500);
+
+    listAudits()
+      .then((a) => {
+        if (isMounted) {
+          setAudits((a || []).sort((x, y) => y.createdAt.localeCompare(x.createdAt)));
+          setCurrentId(getCurrentAuditId());
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        console.error("Failed to load audits:", e);
+        if (isMounted) setLoading(false);
+      })
+      .finally(() => {
+        clearTimeout(safetyTimer);
+      });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   function activate(id: string) {
