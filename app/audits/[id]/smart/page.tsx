@@ -166,15 +166,19 @@ export default function SmartAuditPage() {
 
   // Speaker Diarization & Playback State
   const [speakers, setSpeakers] = useState<SpeakerProfile[]>([
-    { id: "speaker_1", name: "Lead Auditor", role: "Auditor", color: "blue" },
-    { id: "speaker_2", name: "Supplier Contact", role: "Supplier QA", color: "emerald" },
+    { id: "speaker_1", name: "Speaker 1", role: "Unassigned", color: "blue" },
+    { id: "speaker_2", name: "Speaker 2", role: "Unassigned", color: "emerald" },
+    { id: "speaker_3", name: "Speaker 3", role: "Unassigned", color: "purple" },
+    { id: "speaker_4", name: "Speaker 4", role: "Unassigned", color: "amber" },
   ]);
   const [editingSpeaker, setEditingSpeaker] = useState<{ segmentId: string; speakerId: string; currentName: string; currentRole: string } | null>(null);
   const [newSpeakerName, setNewSpeakerName] = useState("");
-  const [newSpeakerRole, setNewSpeakerRole] = useState("Supplier QA");
+  const [newSpeakerRole, setNewSpeakerRole] = useState("Unassigned");
   const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const recordedAudioChunksRef = useRef<Blob[]>([]);
+  const lastSpeakerIdRef = useRef<string>("speaker_1");
+  const lastUtteranceTimeRef = useRef<number>(0);
 
   // Refs for audio & speech recognition
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -348,10 +352,12 @@ export default function SmartAuditPage() {
 
       mr.start(1000);
 
-      // Default speaker profiles with auditor + contact info
-      const defaultSpeakers: SpeakerProfile[] = [
-        { id: "speaker_1", name: audit?.leadAuditor || "Lead Auditor", role: "Lead Auditor", color: "blue" },
-        { id: "speaker_2", name: audit?.supplierContact || "Supplier QA", role: "Supplier QA", color: "emerald" },
+      // Default neutral speaker profiles — AI does not assume names unless confirmed
+      const neutralSpeakers: SpeakerProfile[] = [
+        { id: "speaker_1", name: "Speaker 1", role: "Unassigned", color: "blue" },
+        { id: "speaker_2", name: "Speaker 2", role: "Unassigned", color: "emerald" },
+        { id: "speaker_3", name: "Speaker 3", role: "Unassigned", color: "purple" },
+        { id: "speaker_4", name: "Speaker 4", role: "Unassigned", color: "amber" },
       ];
 
       // Create new session if none exists
@@ -365,24 +371,28 @@ export default function SmartAuditPage() {
           endedAt: null,
           status: "RECORDING",
           durationSec: 0,
-          speakers: defaultSpeakers,
+          speakers: neutralSpeakers,
           transcriptSegments: [],
           markers: [],
           photos: [],
           aiNotes: [],
           updatedAt: new Date().toISOString(),
         };
-        setSpeakers(defaultSpeakers);
+        setSpeakers(neutralSpeakers);
         await persistSession(currentSession);
         setElapsedSeconds(0);
       } else {
+        const existingOrNeutral = (currentSession.speakers && currentSession.speakers.length > 0)
+          ? currentSession.speakers
+          : neutralSpeakers;
+
         currentSession = {
           ...currentSession,
           status: "RECORDING",
-          speakers: currentSession.speakers || defaultSpeakers,
+          speakers: existingOrNeutral,
           updatedAt: new Date().toISOString(),
         };
-        if (currentSession.speakers) setSpeakers(currentSession.speakers);
+        setSpeakers(existingOrNeutral);
         await persistSession(currentSession);
       }
 
@@ -430,25 +440,33 @@ export default function SmartAuditPage() {
 
           if (final.trim().length > 0 && sessionRef.current) {
             const currentSec = sessionRef.current.durationSec;
+            const timeDiff = currentSec - lastUtteranceTimeRef.current;
+            lastUtteranceTimeRef.current = currentSec;
+
             const textLower = final.trim().toLowerCase();
-
-            // Automatic heuristic speaker diarization
-            // If text starts with question or marker words, attribute to Auditor (Speaker 1)
-            // If text starts with "we", "yes", "our", "it is", "currently", attribute to Supplier (Speaker 2)
-            const isAuditorClue = textLower.startsWith("pqe") ||
-              textLower.startsWith("can you") ||
-              textLower.startsWith("could you") ||
-              textLower.startsWith("please show") ||
-              textLower.startsWith("where is") ||
-              textLower.startsWith("what is the") ||
-              textLower.startsWith("how do you") ||
-              textLower.includes("finding") ||
-              textLower.includes("observation");
-
             const activeSpeakers = sessionRef.current.speakers || speakers;
-            const defaultSpeaker = isAuditorClue
-              ? (activeSpeakers.find((s) => s.id === "speaker_1") || activeSpeakers[0])
-              : (activeSpeakers.find((s) => s.id === "speaker_2") || activeSpeakers[1] || activeSpeakers[0]);
+
+            // Voice Turn Detection:
+            // 1. Explicit auditor keyword -> Speaker 1
+            // 2. Pause gap > 2.5s -> alternate speaker turn
+            // 3. Otherwise maintain current speaker turn
+            let assignedSpeakerId = lastSpeakerIdRef.current;
+            const isExplicitAuditorMarker = textLower.startsWith("pqe") || textLower.includes("finding") || textLower.includes("potential nonconformance");
+
+            if (isExplicitAuditorMarker) {
+              assignedSpeakerId = "speaker_1";
+            } else if (timeDiff > 2.5) {
+              // Pause detected between utterances: alternate speaker turn
+              assignedSpeakerId = lastSpeakerIdRef.current === "speaker_1" ? "speaker_2" : "speaker_1";
+            }
+
+            lastSpeakerIdRef.current = assignedSpeakerId;
+
+            const speakerObj = activeSpeakers.find((s) => s.id === assignedSpeakerId) || {
+              id: assignedSpeakerId,
+              name: assignedSpeakerId === "speaker_1" ? "Speaker 1" : "Speaker 2",
+              role: "Unassigned",
+            };
 
             const newSegment: TranscriptSegment = {
               id: nanoid(),
@@ -458,9 +476,9 @@ export default function SmartAuditPage() {
               audioEndSec: currentSec,
               text: final.trim(),
               isFinal: true,
-              speakerId: defaultSpeaker.id,
-              speakerName: defaultSpeaker.name,
-              speakerRole: defaultSpeaker.role,
+              speakerId: speakerObj.id,
+              speakerName: speakerObj.name,
+              speakerRole: speakerObj.role,
             };
 
             const updatedSession: SmartAuditSession = {
@@ -1381,46 +1399,58 @@ export default function SmartAuditPage() {
                     )}
 
                     {session?.transcriptSegments.map((seg) => {
-                      const isAuditor = seg.speakerId === "speaker_1" || (seg.speakerRole && seg.speakerRole.toLowerCase().includes("auditor"));
+                      const spId = seg.speakerId || "speaker_1";
+                      const isSp1 = spId === "speaker_1";
+                      const isSp2 = spId === "speaker_2";
+                      const isSp3 = spId === "speaker_3";
+
+                      const badgeStyle = isSp1
+                        ? "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200"
+                        : isSp2
+                        ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200"
+                        : isSp3
+                        ? "bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-200"
+                        : "bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200";
+
+                      const cardStyle = isSp1
+                        ? "bg-blue-50/40 border-blue-200/80"
+                        : isSp2
+                        ? "bg-emerald-50/30 border-emerald-200/70"
+                        : isSp3
+                        ? "bg-purple-50/30 border-purple-200/70"
+                        : "bg-amber-50/30 border-amber-200/70";
+
                       return (
                         <div
                           key={seg.id}
-                          className={`p-3 rounded-xl border text-sm transition ${
-                            isAuditor
-                              ? "bg-blue-50/40 border-blue-200/80 text-slate-900"
-                              : "bg-emerald-50/30 border-emerald-200/70 text-slate-900"
-                          }`}
+                          className={`p-3 rounded-xl border text-sm text-slate-900 transition ${cardStyle}`}
                         >
                           <div className="flex items-center justify-between text-xs mb-1.5 gap-2">
                             <div className="flex items-center gap-2">
-                              {/* Interactive Speaker Badge */}
+                              {/* Interactive Speaker Badge (Plaud-Style) */}
                               <button
                                 type="button"
                                 onClick={() => {
                                   setEditingSpeaker({
                                     segmentId: seg.id,
                                     speakerId: seg.speakerId || "speaker_1",
-                                    currentName: seg.speakerName || "Speaker",
-                                    currentRole: seg.speakerRole || "Participant",
+                                    currentName: seg.speakerName || "Speaker 1",
+                                    currentRole: seg.speakerRole || "Unassigned",
                                   });
                                   setNewSpeakerName(seg.speakerName || "");
-                                  setNewSpeakerRole(seg.speakerRole || "Supplier QA");
+                                  setNewSpeakerRole(seg.speakerRole || "Unassigned");
                                 }}
-                                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
-                                  isAuditor
-                                    ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
-                                    : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                                }`}
-                                title="Click to rename speaker or change role"
+                                className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1 shadow-2xs transition ${badgeStyle}`}
+                                title="Click to identify and name this voice"
                               >
                                 <span>👤</span>
-                                <span>{seg.speakerName || (isAuditor ? "Lead Auditor" : "Supplier Contact")}</span>
-                                <span className="opacity-60 text-[10px]">✎</span>
+                                <span>{seg.speakerName || `Speaker ${spId.replace("speaker_", "")}`}</span>
+                                <span className="opacity-50 text-[10px]">✎</span>
                               </button>
 
-                              {seg.speakerRole && (
-                                <span className="text-[10px] text-slate-400 uppercase font-mono tracking-tight">
-                                  [{seg.speakerRole}]
+                              {seg.speakerRole && seg.speakerRole !== "Unassigned" && (
+                                <span className="text-[10px] text-slate-500 uppercase font-mono tracking-tight bg-white/70 px-1.5 py-0.5 rounded border border-slate-200">
+                                  {seg.speakerRole}
                                 </span>
                               )}
                             </div>
@@ -1976,6 +2006,7 @@ export default function SmartAuditPage() {
                   onChange={(e) => setNewSpeakerRole(e.target.value)}
                   className="w-full border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500"
                 >
+                  <option value="Unassigned">Unassigned (Speaker Only)</option>
                   <option value="Lead Auditor">Lead Auditor (You)</option>
                   <option value="Auditor">Co-Auditor</option>
                   <option value="Supplier QA">Supplier QA / Quality Director</option>
