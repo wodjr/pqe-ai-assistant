@@ -47,7 +47,7 @@ export default function ChecklistDetailPage() {
     });
   }, [id]);
 
-  async function loadRawExcel(blobKey: string) {
+  async function loadRawExcel(blobKey: string, fallbackTemplate?: ChecklistTemplate) {
     try {
       const blob = await getBlob(blobKey);
       if (blob) {
@@ -57,37 +57,81 @@ export default function ChecklistDetailPage() {
         await workbook.xlsx.load(buffer);
 
         const sheets: SheetData[] = [];
-        workbook.eachSheet((worksheet) => {
+        workbook.worksheets.forEach((worksheet) => {
           const rows: string[][] = [];
-          worksheet.eachRow({ includeEmpty: false }, (row) => {
+          const maxCols = Math.min(worksheet.columnCount || 10, 20);
+
+          worksheet.eachRow({ includeEmpty: true }, (row) => {
             const rowValues: string[] = [];
-            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-              while (rowValues.length < colNumber - 1) {
-                rowValues.push("");
-              }
+            for (let c = 1; c <= Math.max(row.cellCount, maxCols); c++) {
+              const cell = row.getCell(c);
               const v = cell.value;
               let str = "";
               if (v !== null && v !== undefined) {
                 if (typeof v === "object" && "richText" in v) {
-                  str = v.richText.map((r: { text: string }) => r.text).join("").trim();
+                  str = (v as { richText: { text: string }[] }).richText
+                    .map((r) => r.text ?? "")
+                    .join("")
+                    .trim();
                 } else if (typeof v === "object" && "result" in v) {
-                  str = String(v.result ?? "").trim();
+                  str = String((v as { result: unknown }).result ?? "").trim();
+                } else if (typeof v === "object" && "text" in v) {
+                  str = String((v as { text: unknown }).text ?? "").trim();
+                } else if (v instanceof Date) {
+                  str = v.toISOString().slice(0, 10);
                 } else {
                   str = String(v).trim();
                 }
               }
               rowValues.push(str);
-            });
+            }
             if (rowValues.some((c) => c !== "")) {
               rows.push(rowValues);
             }
           });
-          sheets.push({ name: worksheet.name, rows });
+          if (rows.length > 0) {
+            sheets.push({ name: worksheet.name || "Sheet", rows });
+          }
         });
         setRawSheets(sheets);
+      } else if (fallbackTemplate && fallbackTemplate.sections.length > 0) {
+        const fallbackRows: string[][] = [
+          ["Section", "Ref", "Question", "Guidance", "Max Score", "Mandatory"],
+        ];
+        fallbackTemplate.sections.forEach((s) => {
+          s.questions.forEach((q) => {
+            fallbackRows.push([
+              s.title,
+              q.reference || "",
+              q.text,
+              q.guidance || "",
+              q.maxScore ? String(q.maxScore) : "—",
+              q.isMandatory ? "YES" : "NO",
+            ]);
+          });
+        });
+        setRawSheets([{ name: "Checklist Matrix", rows: fallbackRows }]);
       }
     } catch (err) {
       console.warn("Could not load raw Excel in detail page:", err);
+      if (fallbackTemplate && fallbackTemplate.sections.length > 0) {
+        const fallbackRows: string[][] = [
+          ["Section", "Ref", "Question", "Guidance", "Max Score", "Mandatory"],
+        ];
+        fallbackTemplate.sections.forEach((s) => {
+          s.questions.forEach((q) => {
+            fallbackRows.push([
+              s.title,
+              q.reference || "",
+              q.text,
+              q.guidance || "",
+              q.maxScore ? String(q.maxScore) : "—",
+              q.isMandatory ? "YES" : "NO",
+            ]);
+          });
+        });
+        setRawSheets([{ name: "Checklist Matrix", rows: fallbackRows }]);
+      }
     } finally {
       setLoading(false);
     }
