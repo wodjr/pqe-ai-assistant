@@ -77,10 +77,8 @@ function buildProfilesFromData(audits: Audit[], allFindings: Finding[], allCARs:
     const obs   = supplierFindings.filter((f) => f.classification === "OBSERVATION").length;
     const openCARs    = supplierCARs.filter((c) => !c.isAuditorVerifiedClosed).length;
     const overdueCARs = supplierCARs.filter((c) => c.status === "OVERDUE").length;
-    const lastDate = supplierAudits
-      .flatMap((a) => a.auditDates)
-      .sort()
-      .at(-1) ?? "";
+    const sortedDates = supplierAudits.flatMap((a) => a.auditDates).sort();
+    const lastDate = sortedDates.length > 0 ? sortedDates[sortedDates.length - 1] : "";
 
     built.push({
       name,
@@ -168,10 +166,8 @@ export default function SuppliersPage() {
           const obs   = supplierFindings.filter((f) => f.classification === "OBSERVATION").length;
           const openCARs    = supplierCARs.filter((c) => !c.isAuditorVerifiedClosed).length;
           const overdueCARs = supplierCARs.filter((c) => c.status === "OVERDUE").length;
-          const lastDate = supplierAudits
-            .flatMap((a) => a.auditDates)
-            .sort()
-            .at(-1) ?? "";
+          const sortedDates = supplierAudits.flatMap((a) => a.auditDates).sort();
+          const lastDate = sortedDates.length > 0 ? sortedDates[sortedDates.length - 1] : "";
 
           built.push({
             name,

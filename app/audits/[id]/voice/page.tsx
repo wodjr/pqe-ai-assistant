@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { getAudit, saveEvidence, saveBlob } from "@/lib/storage/db";
 import { nanoid } from "@/lib/utils/nanoid";
-import { formatDateTime } from "@/lib/utils/format";
+import { formatDateTime, getSupportedAudioMimeType } from "@/lib/utils/format";
 import type { Audit, Evidence } from "@/types/project";
 import PageHeader from "@/components/PageHeader";
 import Card from "@/components/Card";
@@ -52,7 +52,8 @@ export default function VoicePage() {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const mimeType = getSupportedAudioMimeType();
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       chunksRef.current = [];
       startTimeRef.current = new Date().toISOString();
 

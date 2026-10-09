@@ -21,6 +21,7 @@ import {
   saveEvidence,
 } from "@/lib/storage/db";
 import { nanoid } from "@/lib/utils/nanoid";
+import { getSupportedAudioMimeType } from "@/lib/utils/format";
 import {
   getSmartNotesSuggestion,
   getSmartPhotoSuggestion,
@@ -303,7 +304,8 @@ export default function SmartAuditPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream;
 
-      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const mimeType = getSupportedAudioMimeType();
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mr;
       mr.start(1000);
 

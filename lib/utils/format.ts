@@ -50,3 +50,24 @@ export function truncate(str: string, maxLen: number): string {
 export function classNames(...classes: (string | boolean | undefined | null)[]): string {
   return classes.filter(Boolean).join(" ");
 }
+
+/** Get best supported audio MIME type across Chrome, Firefox, Safari, Edge, and iOS */
+export function getSupportedAudioMimeType(): string {
+  if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
+    return "audio/webm";
+  }
+  const candidateTypes = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/aac",
+    "audio/ogg;codecs=opus",
+    "audio/wav",
+  ];
+  for (const t of candidateTypes) {
+    if (MediaRecorder.isTypeSupported(t)) {
+      return t;
+    }
+  }
+  return "";
+}
