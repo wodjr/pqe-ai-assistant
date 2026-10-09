@@ -63,6 +63,7 @@ export default function ChecklistsPage() {
   }, []);
 
   async function handleImport(file: File) {
+    if (importing) return; // Prevent double-trigger from fast multi-clicks
     setImporting(true);
     setError(null);
     setSuccess(null);
@@ -70,7 +71,12 @@ export default function ChecklistsPage() {
       const { template, blob } = await parseExcelToChecklist(file, overrideName || undefined);
       await saveBlob(template.sourceFileBlobKey, blob);
       await saveChecklist(template);
-      setChecklists((prev) => [...prev, template]);
+      setChecklists((prev) => {
+        // Prevent duplicate entries in state if already added
+        const exists = prev.some((c) => c.id === template.id);
+        if (exists) return prev;
+        return [...prev, template];
+      });
       setSuccess(`Imported "${template.name}" — ${template.sections.reduce((n, s) => n + s.questions.length, 0)} questions across ${template.sections.length} sections.`);
       setOverrideName("");
     } catch (e) {
