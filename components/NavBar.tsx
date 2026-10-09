@@ -52,15 +52,18 @@ export default function NavBar() {
   return (
     <nav className="no-print bg-slate-800 text-white shadow-md sticky top-0 z-50">
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
-        {/* Logo */}
+        {/* Logo & Version */}
         <Link
           href="/"
           className="flex items-center gap-2 font-bold text-white text-base tracking-tight"
         >
-          <span className="bg-blue-600 text-white rounded px-2 py-0.5 text-xs font-black tracking-wider">
+          <span className="bg-blue-600 text-white rounded px-2 py-0.5 text-xs font-black tracking-wider shadow-sm">
             PQE
           </span>
           <span className="hidden sm:inline">AI Assistant</span>
+          <span className="bg-slate-700/80 border border-slate-600 text-slate-300 text-[10px] font-semibold px-1.5 py-0.5 rounded tracking-wide">
+            v0.5.0
+          </span>
         </Link>
 
         {/* Desktop links */}
