@@ -35,6 +35,11 @@ export default function NavBar() {
       setIsDark(false);
       document.documentElement.classList.remove("dark");
     }
+
+    // Pre-warm database caches in background on initial navigation
+    import("@/lib/storage/db").then((db) => {
+      db.prewarmDB().catch(() => {});
+    });
   }, []);
 
   function toggleDarkMode() {

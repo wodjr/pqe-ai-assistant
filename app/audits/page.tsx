@@ -3,7 +3,7 @@
  * app/audits/page.tsx — All audits list
  */
 import { useEffect, useState } from "react";
-import { listAudits } from "@/lib/storage/db";
+import { listAudits, getCachedAudits } from "@/lib/storage/db";
 import { setCurrentAuditId, getCurrentAuditId } from "@/lib/storage/localStorage";
 import { formatDate } from "@/lib/utils/format";
 import type { Audit } from "@/types/project";
@@ -15,9 +15,10 @@ import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function AuditsPage() {
-  const [audits, setAudits] = useState<Audit[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const cached = getCachedAudits();
+  const [audits, setAudits] = useState<Audit[]>(() => cached ? [...cached].sort((x, y) => y.createdAt.localeCompare(x.createdAt)) : []);
+  const [loading, setLoading] = useState(() => !cached);
+  const [currentId, setCurrentId] = useState<string | null>(() => getCurrentAuditId());
 
   useEffect(() => {
     let isMounted = true;

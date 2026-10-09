@@ -6,7 +6,7 @@
  * overdue CARs, and audit history. Read-only summary view.
  */
 import { useEffect, useState } from "react";
-import { listAudits, listFindings, listCARs } from "@/lib/storage/db";
+import { listAudits, listFindings, listCARs, getCachedAudits, getCachedFindings, getCachedCARs } from "@/lib/storage/db";
 import { formatDate } from "@/lib/utils/format";
 import type { Audit, Finding, CAR } from "@/types/project";
 import PageHeader from "@/components/PageHeader";
@@ -40,9 +40,77 @@ const RISK_COLOURS: Record<SupplierProfile["riskScore"], string> = {
   LOW:    "bg-green-100 text-green-700 border-green-200",
 };
 
+function buildProfilesFromData(audits: Audit[], allFindings: Finding[], allCARs: CAR[]): SupplierProfile[] {
+  const findingsByAudit = new Map<string, Finding[]>();
+  for (const f of allFindings) {
+    const list = findingsByAudit.get(f.auditId) ?? [];
+    list.push(f);
+    findingsByAudit.set(f.auditId, list);
+  }
+
+  const carsByAudit = new Map<string, CAR[]>();
+  for (const c of allCARs) {
+    const list = carsByAudit.get(c.auditId) ?? [];
+    list.push(c);
+    carsByAudit.set(c.auditId, list);
+  }
+
+  const map = new Map<string, Audit[]>();
+  for (const a of audits) {
+    const key = `${a.supplierName}|${a.supplierSite}`;
+    map.set(key, [...(map.get(key) ?? []), a]);
+  }
+
+  const built: SupplierProfile[] = [];
+  for (const [key, supplierAudits] of map) {
+    const [name, site] = key.split("|");
+    const supplierFindings: Finding[] = [];
+    const supplierCARs: CAR[] = [];
+
+    for (const a of supplierAudits) {
+      supplierFindings.push(...(findingsByAudit.get(a.id) ?? []));
+      supplierCARs.push(...(carsByAudit.get(a.id) ?? []));
+    }
+
+    const major = supplierFindings.filter((f) => f.classification === "MAJOR").length;
+    const minor = supplierFindings.filter((f) => f.classification === "MINOR").length;
+    const obs   = supplierFindings.filter((f) => f.classification === "OBSERVATION").length;
+    const openCARs    = supplierCARs.filter((c) => !c.isAuditorVerifiedClosed).length;
+    const overdueCARs = supplierCARs.filter((c) => c.status === "OVERDUE").length;
+    const lastDate = supplierAudits
+      .flatMap((a) => a.auditDates)
+      .sort()
+      .at(-1) ?? "";
+
+    built.push({
+      name,
+      site,
+      audits: supplierAudits,
+      totalMajor: major,
+      totalMinor: minor,
+      totalObservations: obs,
+      openCARs,
+      overdueCARs,
+      lastAuditDate: lastDate,
+      riskScore: calcRisk(major, overdueCARs),
+    });
+  }
+
+  const ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+  built.sort((a, b) => ORDER[a.riskScore] - ORDER[b.riskScore]);
+  return built;
+}
+
 export default function SuppliersPage() {
-  const [profiles, setProfiles] = useState<SupplierProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedAudits = getCachedAudits();
+  const cachedFindings = getCachedFindings();
+  const cachedCARs = getCachedCARs();
+  const initialProfiles = (cachedAudits && cachedFindings && cachedCARs)
+    ? buildProfilesFromData(cachedAudits, cachedFindings, cachedCARs)
+    : [];
+
+  const [profiles, setProfiles] = useState<SupplierProfile[]>(initialProfiles);
+  const [loading, setLoading] = useState(() => !cachedAudits);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {

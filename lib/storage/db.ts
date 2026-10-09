@@ -137,27 +137,87 @@ export async function getDB(): Promise<IDBPDatabase> {
 }
 
 // ---------------------------------------------------------------------------
+// In-Memory Fast Cache Layer (0ms Instant Navigation)
+// ---------------------------------------------------------------------------
+const memoryCache = {
+  checklists: null as ChecklistTemplate[] | null,
+  audits: null as Audit[] | null,
+  findings: null as Finding[] | null,
+  cars: null as CAR[] | null,
+};
+
+export function getCachedAudits(): Audit[] | null {
+  return memoryCache.audits;
+}
+
+export function getCachedChecklists(): ChecklistTemplate[] | null {
+  return memoryCache.checklists;
+}
+
+export function getCachedFindings(): Finding[] | null {
+  return memoryCache.findings;
+}
+
+export function getCachedCARs(): CAR[] | null {
+  return memoryCache.cars;
+}
+
+// Prewarm all key stores in background on app startup
+export async function prewarmDB(): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    const db = await getDB();
+    const [c, a, f, cars] = await Promise.all([
+      db.getAll("checklists"),
+      db.getAll("audits"),
+      db.getAll("findings"),
+      db.getAll("cars"),
+    ]);
+    memoryCache.checklists = c;
+    memoryCache.audits = a;
+    memoryCache.findings = f;
+    memoryCache.cars = cars;
+  } catch {
+    // Ignore background warm errors
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Checklist templates
 // ---------------------------------------------------------------------------
 
 export async function saveChecklist(template: ChecklistTemplate): Promise<void> {
   const db = await getDB();
   await db.put("checklists", template);
+  if (memoryCache.checklists) {
+    const idx = memoryCache.checklists.findIndex((x) => x.id === template.id);
+    if (idx >= 0) memoryCache.checklists[idx] = template;
+    else memoryCache.checklists.push(template);
+  }
 }
 
 export async function getChecklist(id: string): Promise<ChecklistTemplate | undefined> {
+  if (memoryCache.checklists) {
+    const found = memoryCache.checklists.find((x) => x.id === id);
+    if (found) return found;
+  }
   const db = await getDB();
   return db.get("checklists", id);
 }
 
 export async function listChecklists(): Promise<ChecklistTemplate[]> {
   const db = await getDB();
-  return db.getAll("checklists");
+  const list = await db.getAll("checklists");
+  memoryCache.checklists = list;
+  return list;
 }
 
 export async function deleteChecklist(id: string): Promise<void> {
   const db = await getDB();
   await db.delete("checklists", id);
+  if (memoryCache.checklists) {
+    memoryCache.checklists = memoryCache.checklists.filter((x) => x.id !== id);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -167,21 +227,35 @@ export async function deleteChecklist(id: string): Promise<void> {
 export async function saveAudit(audit: Audit): Promise<void> {
   const db = await getDB();
   await db.put("audits", audit);
+  if (memoryCache.audits) {
+    const idx = memoryCache.audits.findIndex((x) => x.id === audit.id);
+    if (idx >= 0) memoryCache.audits[idx] = audit;
+    else memoryCache.audits.push(audit);
+  }
 }
 
 export async function getAudit(id: string): Promise<Audit | undefined> {
+  if (memoryCache.audits) {
+    const found = memoryCache.audits.find((x) => x.id === id);
+    if (found) return found;
+  }
   const db = await getDB();
   return db.get("audits", id);
 }
 
 export async function listAudits(): Promise<Audit[]> {
   const db = await getDB();
-  return db.getAll("audits");
+  const list = await db.getAll("audits");
+  memoryCache.audits = list;
+  return list;
 }
 
 export async function deleteAudit(id: string): Promise<void> {
   const db = await getDB();
   await db.delete("audits", id);
+  if (memoryCache.audits) {
+    memoryCache.audits = memoryCache.audits.filter((x) => x.id !== id);
+  }
 }
 
 // ---------------------------------------------------------------------------

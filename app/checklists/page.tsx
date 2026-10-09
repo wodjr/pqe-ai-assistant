@@ -3,7 +3,7 @@
  * app/checklists/page.tsx — Checklist template list + import
  */
 import { useEffect, useState, useRef } from "react";
-import { listChecklists, saveChecklist, saveBlob, deleteChecklist, getBlob } from "@/lib/storage/db";
+import { listChecklists, saveChecklist, saveBlob, deleteChecklist, getBlob, getCachedChecklists } from "@/lib/storage/db";
 import { parseExcelToChecklist } from "@/lib/parseExcel";
 import { formatDate } from "@/lib/utils/format";
 import type { ChecklistTemplate } from "@/types/project";
@@ -19,8 +19,9 @@ interface SheetData {
 }
 
 export default function ChecklistsPage() {
-  const [checklists, setChecklists] = useState<ChecklistTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedChecklists();
+  const [checklists, setChecklists] = useState<ChecklistTemplate[]>(() => cached || []);
+  const [loading, setLoading] = useState(() => !cached);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);

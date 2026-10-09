@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { listAudits, listChecklists, listCARs } from "@/lib/storage/db";
+import { listAudits, listChecklists, listCARs, getCachedAudits, getCachedChecklists } from "@/lib/storage/db";
 import { getCurrentAuditId, setCurrentAuditId } from "@/lib/storage/localStorage";
 import { formatDate } from "@/lib/utils/format";
 import type { Audit, ChecklistTemplate, CAR } from "@/types/project";
@@ -24,10 +24,13 @@ const STATUS_ORDER: Record<string, number> = {
 };
 
 export default function DashboardPage() {
-  const [audits, setAudits] = useState<Audit[]>([]);
-  const [checklists, setChecklists] = useState<ChecklistTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const cachedAudits = getCachedAudits();
+  const cachedChecklists = getCachedChecklists();
+
+  const [audits, setAudits] = useState<Audit[]>(() => cachedAudits || []);
+  const [checklists, setChecklists] = useState<ChecklistTemplate[]>(() => cachedChecklists || []);
+  const [loading, setLoading] = useState(() => !cachedAudits);
+  const [currentId, setCurrentId] = useState<string | null>(() => getCurrentAuditId());
   const [overdueCARs, setOverdueCARs] = useState<{ car: CAR; auditName: string }[]>([]);
 
   useEffect(() => {
@@ -36,12 +39,12 @@ export default function DashboardPage() {
       // Set safety timeout so page never stays stuck loading
       const safetyTimer = setTimeout(() => {
         if (isMounted) setLoading(false);
-      }, 2500);
+      }, 1500);
 
       try {
         const [a, c, allCARs] = await Promise.all([
-          listAudits().catch(() => []),
-          listChecklists().catch(() => []),
+          listAudits().catch(() => cachedAudits || []),
+          listChecklists().catch(() => cachedChecklists || []),
           listCARs().catch(() => []),
         ]);
         if (!isMounted) return;
