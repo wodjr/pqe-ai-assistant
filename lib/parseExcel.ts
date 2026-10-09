@@ -22,7 +22,6 @@
  *   - Column A value looks like a top-level number only (e.g. "1", "2.")
  */
 
-import { Workbook } from "exceljs";
 import type { Cell, Row, Font, CellRichTextValue, CellFormulaValue } from "exceljs";
 import { nanoid } from "@/lib/utils/nanoid";
 import type { ChecklistTemplate, ChecklistSection, ChecklistQuestion } from "@/types/project";
@@ -77,8 +76,20 @@ export async function parseExcelToChecklist(
   const arrayBuffer = await file.arrayBuffer();
   const blob = new Blob([arrayBuffer], { type: file.type });
 
+  const { Workbook } = await import("exceljs");
   const workbook = new Workbook();
-  await workbook.xlsx.load(arrayBuffer);
+  try {
+    await workbook.xlsx.load(arrayBuffer);
+  } catch (err) {
+    if (file.name.toLowerCase().endsWith(".xls")) {
+      throw new Error(
+        "Legacy Excel 97-2003 (.xls) format is not supported directly. Please open and 'Save As' modern (.xlsx) format in Excel, then upload."
+      );
+    }
+    throw new Error(
+      `Failed to parse Excel file: ${err instanceof Error ? err.message : "Invalid or corrupted .xlsx file"}`
+    );
+  }
 
   const templateId = nanoid();
   const blobKey = `checklist_blob_${templateId}`;

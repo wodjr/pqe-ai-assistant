@@ -176,6 +176,9 @@ export default function ChecklistsPage() {
             preserved as a read-only source file. Columns A–F are parsed: Reference, Question,
             Guidance, Max Score, Scoring Basis, Mandatory (Y/N).
           </p>
+          <p className="text-xs text-slate-500 italic">
+            * Please use modern <strong>.xlsx</strong> format. If your template is in legacy Excel 97–2003 (.xls), open it in Excel and Save As (.xlsx).
+          </p>
           <div className="flex gap-2 flex-wrap">
             <input
               type="text"
