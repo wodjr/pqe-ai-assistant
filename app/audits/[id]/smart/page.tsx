@@ -170,6 +170,8 @@ export default function SmartAuditPage() {
     { id: "speaker_2", name: "Speaker 2", role: "Unassigned", color: "emerald" },
     { id: "speaker_3", name: "Speaker 3", role: "Unassigned", color: "purple" },
     { id: "speaker_4", name: "Speaker 4", role: "Unassigned", color: "amber" },
+    { id: "speaker_5", name: "Speaker 5", role: "Unassigned", color: "rose" },
+    { id: "speaker_6", name: "Speaker 6", role: "Unassigned", color: "cyan" },
   ]);
   const [editingSpeaker, setEditingSpeaker] = useState<{ segmentId: string; speakerId: string; currentName: string; currentRole: string } | null>(null);
   const [newSpeakerName, setNewSpeakerName] = useState("");
@@ -179,6 +181,8 @@ export default function SmartAuditPage() {
   const recordedAudioChunksRef = useRef<Blob[]>([]);
   const lastSpeakerIdRef = useRef<string>("speaker_1");
   const lastUtteranceTimeRef = useRef<number>(0);
+  const isRecordingRef = useRef<boolean>(false);
+  const recognitionWatchdogRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Refs for audio & speech recognition
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -318,8 +322,18 @@ export default function SmartAuditPage() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Audio Enhancement: Noise suppression, acoustic echo cancellation, and auto-gain
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 48000,
+        },
+      });
       audioStreamRef.current = stream;
+      isRecordingRef.current = true;
 
       const mimeType = getSupportedAudioMimeType();
       const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -358,6 +372,8 @@ export default function SmartAuditPage() {
         { id: "speaker_2", name: "Speaker 2", role: "Unassigned", color: "emerald" },
         { id: "speaker_3", name: "Speaker 3", role: "Unassigned", color: "purple" },
         { id: "speaker_4", name: "Speaker 4", role: "Unassigned", color: "amber" },
+        { id: "speaker_5", name: "Speaker 5", role: "Unassigned", color: "rose" },
+        { id: "speaker_6", name: "Speaker 6", role: "Unassigned", color: "cyan" },
       ];
 
       // Create new session if none exists
@@ -414,102 +430,122 @@ export default function SmartAuditPage() {
         });
       }, 1000);
 
-      // Start Browser Speech Recognition (Web Speech API)
+      // Continuous Auto-Reconnecting Speech Recognition
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
+        const setupRecognition = () => {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = "en-US";
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        recognition.onresult = (event: any) => {
-          let interim = "";
-          let final = "";
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          recognition.onresult = (event: any) => {
+            let interim = "";
+            let final = "";
 
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              final += event.results[i][0].transcript;
-            } else {
-              interim += event.results[i][0].transcript;
-            }
-          }
-
-          setInterimTranscript(interim);
-
-          if (final.trim().length > 0 && sessionRef.current) {
-            const currentSec = sessionRef.current.durationSec;
-            const timeDiff = currentSec - lastUtteranceTimeRef.current;
-            lastUtteranceTimeRef.current = currentSec;
-
-            const textLower = final.trim().toLowerCase();
-            const activeSpeakers = sessionRef.current.speakers || speakers;
-
-            // Voice Turn Detection:
-            // 1. Explicit auditor keyword -> Speaker 1
-            // 2. Pause gap > 2.5s -> alternate speaker turn
-            // 3. Otherwise maintain current speaker turn
-            let assignedSpeakerId = lastSpeakerIdRef.current;
-            const isExplicitAuditorMarker = textLower.startsWith("pqe") || textLower.includes("finding") || textLower.includes("potential nonconformance");
-
-            if (isExplicitAuditorMarker) {
-              assignedSpeakerId = "speaker_1";
-            } else if (timeDiff > 2.5) {
-              // Pause detected between utterances: alternate speaker turn
-              assignedSpeakerId = lastSpeakerIdRef.current === "speaker_1" ? "speaker_2" : "speaker_1";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                final += event.results[i][0].transcript;
+              } else {
+                interim += event.results[i][0].transcript;
+              }
             }
 
-            lastSpeakerIdRef.current = assignedSpeakerId;
+            setInterimTranscript(interim);
 
-            const speakerObj = activeSpeakers.find((s) => s.id === assignedSpeakerId) || {
-              id: assignedSpeakerId,
-              name: assignedSpeakerId === "speaker_1" ? "Speaker 1" : "Speaker 2",
-              role: "Unassigned",
-            };
+            if (final.trim().length > 0 && sessionRef.current) {
+              const currentSec = sessionRef.current.durationSec;
+              const timeDiff = currentSec - lastUtteranceTimeRef.current;
+              lastUtteranceTimeRef.current = currentSec;
 
-            const newSegment: TranscriptSegment = {
-              id: nanoid(),
-              timestamp: formatDuration(currentSec),
-              timestampSec: currentSec,
-              audioStartSec: Math.max(0, currentSec - 4),
-              audioEndSec: currentSec,
-              text: final.trim(),
-              isFinal: true,
-              speakerId: speakerObj.id,
-              speakerName: speakerObj.name,
-              speakerRole: speakerObj.role,
-            };
+              const textLower = final.trim().toLowerCase();
+              const activeSpeakers = sessionRef.current.speakers || speakers;
 
-            const updatedSession: SmartAuditSession = {
-              ...sessionRef.current,
-              transcriptSegments: [...sessionRef.current.transcriptSegments, newSegment],
-              updatedAt: new Date().toISOString(),
-            };
-            persistSession(updatedSession);
-            checkVoiceMarkers(final.trim(), currentSec);
-            setInterimTranscript("");
-          }
-        };
+              // Voice Turn Detection across 4+ speakers:
+              let assignedSpeakerId = lastSpeakerIdRef.current;
+              const isExplicitAuditorMarker = textLower.startsWith("pqe") || textLower.includes("finding") || textLower.includes("potential nonconformance");
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        recognition.onerror = (e: any) => {
-          console.warn("Speech recognition error:", e.error);
-        };
+              if (isExplicitAuditorMarker) {
+                assignedSpeakerId = "speaker_1";
+              } else if (timeDiff > 3.0) {
+                // Significant pause -> cycle to next speaker turn (1 -> 2 -> 3 -> 4)
+                const currentNum = parseInt(lastSpeakerIdRef.current.replace("speaker_", ""), 10) || 1;
+                const nextNum = (currentNum % 4) + 1;
+                assignedSpeakerId = `speaker_${nextNum}`;
+              }
 
-        recognition.onend = () => {
-          // Restart recognition if session is still recording
-          if (recordingState === "RECORDING" && speechRecognitionRef.current) {
-            try {
-              recognition.start();
-            } catch {
-              // already running or stopped
+              lastSpeakerIdRef.current = assignedSpeakerId;
+
+              const speakerObj = activeSpeakers.find((s) => s.id === assignedSpeakerId) || {
+                id: assignedSpeakerId,
+                name: `Speaker ${assignedSpeakerId.replace("speaker_", "")}`,
+                role: "Unassigned",
+              };
+
+              const newSegment: TranscriptSegment = {
+                id: nanoid(),
+                timestamp: formatDuration(currentSec),
+                timestampSec: currentSec,
+                audioStartSec: Math.max(0, currentSec - 5),
+                audioEndSec: currentSec,
+                text: final.trim(),
+                isFinal: true,
+                speakerId: speakerObj.id,
+                speakerName: speakerObj.name,
+                speakerRole: speakerObj.role,
+              };
+
+              const updatedSession: SmartAuditSession = {
+                ...sessionRef.current,
+                transcriptSegments: [...sessionRef.current.transcriptSegments, newSegment],
+                updatedAt: new Date().toISOString(),
+              };
+              persistSession(updatedSession);
+              checkVoiceMarkers(final.trim(), currentSec);
+              setInterimTranscript("");
             }
+          };
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          recognition.onerror = (e: any) => {
+            console.warn("Speech recognition warning:", e.error);
+          };
+
+          recognition.onend = () => {
+            // Auto-reconnect seamlessly if recording is still active
+            if (isRecordingRef.current) {
+              setTimeout(() => {
+                if (isRecordingRef.current) {
+                  try {
+                    recognition.start();
+                  } catch {
+                    // re-instantiate if needed
+                    setupRecognition();
+                  }
+                }
+              }, 120);
+            }
+          };
+
+          try {
+            recognition.start();
+          } catch {
+            // ignore start error
           }
+          speechRecognitionRef.current = recognition;
         };
 
-        recognition.start();
-        speechRecognitionRef.current = recognition;
+        setupRecognition();
+
+        // 15-second watchdog timer to ensure continuous recording never drops
+        if (recognitionWatchdogRef.current) clearInterval(recognitionWatchdogRef.current);
+        recognitionWatchdogRef.current = setInterval(() => {
+          if (isRecordingRef.current && (!speechRecognitionRef.current || !audioStreamRef.current?.active)) {
+            setupRecognition();
+          }
+        }, 15000);
       }
     } catch {
       alert("Could not start recording. Please grant microphone permissions in your browser.");
@@ -517,7 +553,9 @@ export default function SmartAuditPage() {
   };
 
   const pauseRecording = () => {
+    isRecordingRef.current = false;
     if (timerRef.current) clearInterval(timerRef.current);
+    if (recognitionWatchdogRef.current) clearInterval(recognitionWatchdogRef.current);
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.stop();
@@ -538,6 +576,7 @@ export default function SmartAuditPage() {
   };
 
   const resumeRecording = () => {
+    isRecordingRef.current = true;
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.start();
@@ -566,7 +605,9 @@ export default function SmartAuditPage() {
   };
 
   const stopRecording = async () => {
+    isRecordingRef.current = false;
     if (timerRef.current) clearInterval(timerRef.current);
+    if (recognitionWatchdogRef.current) clearInterval(recognitionWatchdogRef.current);
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.stop();
